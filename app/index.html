@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Budget</title>
+<style>
+:root{
+  color-scheme: light;
+  --plane:#f7f7f5; --card:#fff; --sunk:#eeeeea; --key:#fff;
+  --ink:#111114; --ink2:#55555f; --muted:#8b8b93;
+  --line:#e4e4de; --edge:rgba(17,17,20,.09);
+  --me:#2a78d6; --them:#eb6834;
+  --ok:#0ca30c; --close:#a55a09; --over:#c0392b;
+  --r:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  color-scheme: dark;
+  --plane:#0e0e0d; --card:#1a1a19; --sunk:#242423; --key:#242423;
+  --ink:#f4f4f2; --ink2:#b2b2ac; --muted:#82827c;
+  --line:#2a2a28; --edge:rgba(255,255,255,.09);
+  --me:#3987e5; --them:#d95926;
+  --ok:#0ca30c; --close:#d9a441; --over:#e07a70;
+}}
+:root[data-theme=dark]{
+  color-scheme: dark;
+  --plane:#0e0e0d; --card:#1a1a19; --sunk:#242423; --key:#242423;
+  --ink:#f4f4f2; --ink2:#b2b2ac; --muted:#82827c;
+  --line:#2a2a28; --edge:rgba(255,255,255,.09);
+  --me:#3987e5; --them:#d95926; --ok:#0ca30c; --close:#d9a441; --over:#e07a70;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior-y:contain}
+body{background:var(--plane);color:var(--ink);
+  font:16px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) 0 0}
+.wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:10px 12px 96px;max-width:620px;margin:0 auto;width:100%}
+.hide{display:none!important}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);
+  border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom));display:flex}
+nav button{flex:1;background:none;border:0;color:var(--muted);font:600 11px/1.3 inherit;
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--me)}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:var(--r);padding:16px;margin-bottom:12px}
+h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.muted{color:var(--muted)} .tnum{font-variant-numeric:tabular-nums}
+
+/* entry */
+#add{display:flex;flex-direction:column;min-height:calc(100dvh - 112px)}
+#add > .card{display:flex;flex-direction:column}
+#stepAmount,#stepCat,#stepSeg{flex:1}
+.who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:14px}
+.who button{flex:1;border:0;background:none;padding:9px 4px;border-radius:9px;color:var(--ink2);
+  font:600 13px/1 inherit;cursor:pointer}
+.who button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+.when{display:flex;gap:6px;margin:0 0 14px}
+.when button{flex:1;border:1px solid var(--edge);background:var(--key);padding:8px 4px;
+  border-radius:10px;color:var(--ink2);font:500 12.5px/1 inherit;cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.when button.on{border-color:var(--me);color:var(--me);font-weight:650}
+.backdated{background:color-mix(in srgb,var(--close) 15%,transparent);
+  color:var(--close);padding:9px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.crumb{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px}
+.crumb span{background:var(--sunk);padding:5px 10px;border-radius:99px;color:var(--ink2)}
+.crumb span.now{background:var(--me);color:#fff}
+.amount{margin-top:auto;text-align:center;font:650 clamp(44px,14vw,60px)/1 inherit;
+  letter-spacing:-.03em;padding:18px 0 4px;font-variant-numeric:tabular-nums}
+.amount small{font-size:18px;font-weight:500;color:var(--muted);margin-right:8px;letter-spacing:0}
+.amount.zero{color:var(--muted)}
+.step{text-align:center;color:var(--ink2);font-size:14px;margin-bottom:auto;padding-bottom:12px;min-height:20px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pad button{background:var(--key);border:1px solid var(--edge);border-radius:14px;
+  font:500 26px/1 inherit;color:var(--ink);padding:16px 0;cursor:pointer;
+  font-variant-numeric:tabular-nums;transition:transform .06s,background .12s}
+.pad button:active{transform:scale(.95);background:var(--sunk)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:auto}
+.grid button{background:var(--key);border:1px solid var(--edge);border-radius:14px;
+  padding:14px 10px;font:500 14.5px/1.25 inherit;color:var(--ink);cursor:pointer;
+  min-height:60px;transition:transform .06s,border-color .12s;
+  display:flex;flex-direction:column;justify-content:center;gap:4px}
+.grid button:active{transform:scale(.97)}
+.grid button i{font-style:normal;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.grid button.over i{color:var(--over)}
+.grid button.close i{color:var(--close)}
+.go{width:100%;padding:16px;border:0;border-radius:14px;background:var(--me);color:#fff;
+  font:650 17px/1 inherit;cursor:pointer;margin-top:12px}
+.go:disabled{background:var(--sunk);color:var(--muted)}
+.back{width:100%;padding:12px;border:1px solid var(--edge);border-radius:14px;background:transparent;
+  color:var(--ink2);font:500 15px/1 inherit;cursor:pointer;margin-top:9px}
+.saved{text-align:center;padding:24px 0 6px}
+.saved .tick{width:60px;height:60px;border-radius:50%;background:var(--ok);margin:0 auto 14px;
+  display:grid;place-items:center;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.saved .tick svg{width:29px;height:29px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.saved .big{font:650 26px/1.2 inherit;letter-spacing:-.02em;margin-bottom:4px}
+
+/* budget meters */
+.hero{font:650 33px/1 inherit;letter-spacing:-.03em;margin:2px 0 3px;font-variant-numeric:tabular-nums}
+.hero small{font-size:15px;font-weight:500;color:var(--muted);letter-spacing:0}
+.bar{position:relative;height:13px;background:var(--sunk);border-radius:7px;margin:10px 0 7px}
+.bar .fill{position:absolute;inset:0 auto 0 0;border-radius:7px;min-width:3px}
+.bar .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);
+  border-radius:1px;box-shadow:0 0 0 1.5px var(--card)}
+.meter{padding:13px 0;border-top:1px solid var(--line)}
+.meter:first-child{border-top:0;padding-top:2px}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.meter .nm{font-weight:600;font-size:15px}
+.meter .amt{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.meter .note{font-size:12.5px;color:var(--ink2);display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.pill{font:600 10.5px/1 inherit;letter-spacing:.04em;text-transform:uppercase;
+  padding:4px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.subs{margin:9px 0 0;padding-left:2px}
+.sub{display:grid;grid-template-columns:1fr 76px 78px;align-items:center;gap:10px;
+  padding:6px 0;font-size:13.5px;color:var(--ink2)}
+.sub > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub b{text-align:right}
+.sub b{font-weight:600;color:var(--ink)}
+.sub .mini{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.sub .mini i{display:block;height:100%;border-radius:3px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tile{background:var(--sunk);border-radius:11px;padding:10px 8px;text-align:center}
+.tile .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tile .v{font:600 16px/1.25 inherit;margin-top:3px;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item{display:flex;gap:11px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:15px}
+.item:first-child{border-top:0}
+.item .m{flex:1;min-width:0}
+.item .m b{font-weight:550;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .m span{font-size:12.5px;color:var(--muted)}
+.item .a{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.item.armed{background:color-mix(in srgb,var(--over) 8%,transparent);
+  border-radius:10px;padding-left:8px;padding-right:8px;margin:0 -8px}
+.item .del{border:1px solid var(--over);color:var(--over);background:transparent;
+  border-radius:9px;padding:7px 12px;font:600 12.5px/1 inherit;cursor:pointer;white-space:nowrap}
+.item .cancel{border:1px solid var(--edge);color:var(--ink2);background:transparent;
+  border-radius:9px;padding:7px 11px;font:500 12.5px/1 inherit;cursor:pointer}
+.hint{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.banner{padding:11px 14px;border-radius:12px;font-size:13.5px;margin-bottom:12px;
+  display:flex;gap:9px;align-items:center;justify-content:space-between;
+  background:color-mix(in srgb,var(--close) 15%,transparent);color:var(--close)}
+.banner button{border:0;background:none;color:inherit;font:600 13px/1 inherit;text-decoration:underline;cursor:pointer}
+input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-radius:12px;
+  background:var(--key);color:var(--ink);font:15px/1 inherit}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section id="setup" class="hide">
+    <div class="card">
+      <h2>Connect</h2>
+      <p class="muted" style="margin:0 0 14px;font-size:14px">
+        Paste the link from your setup notes, or the Apps Script URL followed by your code.</p>
+      <input type="text" id="urlIn" placeholder="https://script.google.com/…/exec" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input type="text" id="tokIn" placeholder="your code" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:9px">
+      <button class="go" id="connect">Connect</button>
+      <p id="setupMsg" class="muted" style="font-size:13px;margin:12px 0 0"></p>
+    </div>
+  </section>
+
+  <section id="add" class="hide">
+    <div id="queueBanner" class="banner hide">
+      <span id="queueText"></span><button id="retryQueue">Retry</button></div>
+
+    <div class="card" id="stepAmount">
+      <div class="who" id="whoPick"></div>
+      <div class="when" id="whenPick">
+        <button data-d="0" class="on">Today</button>
+        <button data-d="1">Yesterday</button>
+        <button data-d="pick">Another day</button>
+        <input type="date" id="datePick" hidden>
+      </div>
+      <div class="crumb"><span class="now">Amount</span><span>Category</span><span>Segment</span></div>
+      <div class="amount zero" id="amountView"><small>AED</small>0</div>
+      <div class="step" id="amountHint">How much?</div>
+      <div class="pad">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button>
+      </div>
+      <button class="go" id="toCat" disabled>Next</button>
+    </div>
+
+    <div class="card hide" id="stepCat">
+      <div class="crumb"><span id="cAmt1"></span><span class="now">Category</span><span>Segment</span></div>
+      <h2>Which category?</h2>
+      <div class="grid" id="catGrid"></div>
+      <button class="back" id="backAmount">‹ Back</button>
+    </div>
+
+    <div class="card hide" id="stepSeg">
+      <div class="crumb"><span id="cAmt2"></span><span id="cCat"></span><span class="now">Segment</span></div>
+      <h2>Which segment?</h2>
+      <div class="grid" id="segGrid"></div>
+      <button class="back" id="backCat">‹ Back</button>
+    </div>
+
+    <div class="card hide" id="stepSaved">
+      <div class="saved">
+        <div class="tick"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>
+        <div class="big" id="savedAmt"></div>
+        <div class="muted" id="savedCat"></div>
+        <div class="muted" id="savedBudget" style="font-size:13.5px;margin-top:8px"></div>
+      </div>
+      <button class="go" id="addAnother">Add another</button>
+      <button class="back" id="undoLast">Undo — remove that entry</button>
+      <button class="back" id="seeTrack">See the budget</button>
+    </div>
+  </section>
+
+  <section id="track" class="hide">
+    <div class="card">
+      <div class="row"><h2 style="margin:0" id="monthLabel">This month</h2>
+        <button class="back" id="refresh" style="width:auto;margin:0;padding:7px 13px;font-size:13px">Refresh</button></div>
+      <div class="hero" id="total">—</div>
+      <div class="muted" id="totalSub" style="font-size:14px">—</div>
+      <div class="bar"><div class="fill" id="heroFill"></div><div class="mark" id="heroMark"></div></div>
+      <div class="muted" id="heroNote" style="font-size:12.5px"></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Left</div><div class="v" id="tLeft">—</div></div>
+        <div class="tile"><div class="k">Safe / day</div><div class="v" id="tSafe">—</div></div>
+        <div class="tile"><div class="k">Today</div><div class="v" id="tToday">—</div></div>
+      </div>
+    </div>
+    <div class="card"><h2>Budget by category</h2><div id="meters"></div></div>
+    <div class="card"><h2>Recent</h2>
+      <p class="hint">Tap any entry to remove it.</p>
+      <div id="recent"></div></div>
+  </section>
+</div>
+
+<nav class="hide" id="tabs">
+  <button data-tab="add" class="on"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+  <button data-tab="track"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Budget</button>
+</nav>
+<script src="app.js"></script>
+</body>
+</html>

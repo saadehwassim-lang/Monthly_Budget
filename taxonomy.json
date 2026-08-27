@@ -1,0 +1,59 @@
+{
+  "currency": "AED",
+  "timezone": "Asia/Dubai",
+  "people": ["Wassim", "Jamela", "Joint"],
+  "categories": [
+    { "name": "Home Expenses", "segments": [
+      "Mortgage/Rent","Phone Bills","Electricity and Water Bill","Gas Bill",
+      "Cable and Internet Bill","Cleaners","Home Supplies","Water","Laundry",
+      "Food Delivery","Subscription","Meal Plan","Other Home" ] },
+    { "name": "Transportation", "segments": [
+      "Car Loan/Rent","Fuel/Wash","Maintenance","Insurance","Salik and Parking",
+      "Repairs","Registration","License","Others Transportation" ] },
+    { "name": "Personal", "segments": [
+      "Gym","Salon","Clothing","Self Care","Outing","Outing Wassim and Jamela" ] },
+    { "name": "Travel", "segments": [
+      "Lebanon Ticket","Lebanon Travel","Vacation Ticket","Vacation Travel","Others Travel" ] },
+    { "name": "Investment", "segments": [
+      "IBKR","Gold","Silver","Other Investment" ] }
+  ],
+  "budgets": {
+    "Home Expenses|Mortgage/Rent": 3465,
+    "Home Expenses|Phone Bills": 210,
+    "Home Expenses|Electricity and Water Bill": 500,
+    "Home Expenses|Gas Bill": 30,
+    "Home Expenses|Cable and Internet Bill": 326.76,
+    "Home Expenses|Cleaners": 145,
+    "Home Expenses|Home Supplies": 1000,
+    "Home Expenses|Water": 35,
+    "Home Expenses|Laundry": 50,
+    "Home Expenses|Food Delivery": 600,
+    "Home Expenses|Subscription": 210,
+    "Home Expenses|Meal Plan": 1176,
+    "Home Expenses|Other Home": 0,
+    "Transportation|Car Loan/Rent": 1500,
+    "Transportation|Fuel/Wash": 400,
+    "Transportation|Maintenance": 100,
+    "Transportation|Insurance": 210,
+    "Transportation|Salik and Parking": 50,
+    "Transportation|Repairs": 0,
+    "Transportation|Registration": 50,
+    "Transportation|License": 0,
+    "Transportation|Others Transportation": 0,
+    "Personal|Gym": 600,
+    "Personal|Salon": 600,
+    "Personal|Clothing": 450,
+    "Personal|Self Care": 300,
+    "Personal|Outing": 600,
+    "Personal|Outing Wassim and Jamela": 1000,
+    "Travel|Lebanon Ticket": 360,
+    "Travel|Lebanon Travel": 800,
+    "Travel|Vacation Ticket": 0,
+    "Travel|Vacation Travel": 0,
+    "Travel|Others Travel": 0,
+    "Investment|IBKR": 2940,
+    "Investment|Gold": 920,
+    "Investment|Silver": 340,
+    "Investment|Other Investment": 0
+  }
+}
