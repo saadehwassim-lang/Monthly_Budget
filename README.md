@@ -12,7 +12,9 @@ lives inside the spreadsheet.
 |---|---|
 | `sheet/Personal-Budget-Live.xlsx` | Your Monthly layout, with the month columns now filling themselves |
 | `sheet/Code.gs` | The whole backend. Paste into Extensions → Apps Script |
-| `app/` | The phone app. Host the folder; add to home screen |
+| `app/` | The phone app — a static, installable web app |
+| `build-site.mjs` | Builds `_site/`: the app at the root, the demo at `/demo/` |
+| `.github/workflows/pages.yml` | Publishes `_site/` to GitHub Pages on every push to `main` |
 | `SETUP.md` | Start here — about 25 minutes |
 
 ## What changed from your manual file
@@ -34,6 +36,19 @@ Two things I changed deliberately, both reversible:
 
 Everything else came straight across: 5 categories, 37 segments, and your existing
 budget figures — 18,967.76 a month in total.
+
+## Putting it on the web
+
+The app is a self-contained web app — HTML, one script, a service worker — with no
+build step, no framework and no server of its own. Turn on GitHub Pages
+(**Settings → Pages → Source: GitHub Actions**) and every push to `main` publishes
+it at `https://YOUR-USERNAME.github.io/YOUR-REPO/`, with the demo at `/demo/`.
+
+Installed from there it behaves like an app: standalone window, its own icon on
+the home screen, and it opens offline from cache — entries logged with no signal
+queue up and go in when you have some again. The published page holds no secrets;
+your sheet URL and token are typed in once and stay on your phone. `SETUP.md` has
+the details, including when *not* to make the repository public.
 
 ## The one number worth understanding
 

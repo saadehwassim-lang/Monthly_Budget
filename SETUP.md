@@ -62,18 +62,48 @@ everyone once.
 
 ## 3 — The app (5 min)
 
-`app/` is a folder of static files. Drag it onto
-[Cloudflare Pages](https://pages.cloudflare.com) or
-[Netlify Drop](https://app.netlify.com/drop) — free, and you get a URL in seconds.
+The repo publishes itself to **GitHub Pages**. One setting, once:
 
-Open it on your phone, paste the `/exec` URL and your token, and press Connect.
-Then **Share → Add to Home Screen** so it opens like a normal app.
+**Settings → Pages → Build and deployment → Source: _GitHub Actions_.**
+
+That is all. Every push to `main` rebuilds and redeploys — or run *Deploy app to
+GitHub Pages* by hand from the **Actions** tab. A minute later the app is at
+
+```
+https://YOUR-USERNAME.github.io/YOUR-REPO/
+```
+
+with the read-only demo at `/demo/`. Open it on your phone, paste the `/exec` URL
+and your token, press Connect, then **Share → Add to Home Screen** so it opens
+like a normal app.
 
 To skip the typing, open this instead and it fills itself in:
 
 ```
-https://your-app-url/?url=https://script.google.com/macros/s/…/exec&t=YOUR_TOKEN
+https://YOUR-USERNAME.github.io/YOUR-REPO/?url=https://script.google.com/macros/s/…/exec&t=YOUR_TOKEN
 ```
+
+> That link carries your token, so treat it like a password — send it to your own
+> phone, not into a group chat.
+
+**What is public and what is not.** The published page contains no URL and no
+token: both are typed in once and live in that phone's local storage, so anyone
+who finds the Pages URL sees the empty Connect screen and nothing else. The
+*repository*, though, is a different question — `sheet/`, `taxonomy.json` and the
+README carry your real budget figures, and Pages on a private repo needs a paid
+GitHub plan. If those figures are not for public reading, host the app somewhere
+else instead: `app/` is a plain static folder, so [Cloudflare
+Pages](https://pages.cloudflare.com) or [Netlify
+Drop](https://app.netlify.com/drop) will take it as a drag and drop.
+
+**Building the site yourself:**
+
+```
+node build-site.mjs      # writes _site/ — the app at the root, demo at /demo/
+```
+
+Anything served over HTTPS works; every path in the app is relative, so it does
+not care whether it sits at a domain root or under `/YOUR-REPO/`.
 
 ---
 

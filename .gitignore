@@ -1,0 +1,4 @@
+# Built by build-site.mjs, published by the Pages workflow — never committed.
+_site/
+node_modules/
+.DS_Store
