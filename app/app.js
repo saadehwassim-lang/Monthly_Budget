@@ -319,6 +319,12 @@ function paintTrack(){
   const rc=$("#recent"); rc.innerHTML="";
   const rows=monthRows();
   if(!rows.length) rc.appendChild(el("p","muted","Nothing logged this month yet."));
+  /* Only one row can be armed at a time. Swapping to a different row used to
+     call paintTrack() to unarm the old one, which rebuilds #recent from scratch —
+     but that also detached the row the tap just landed on, so nothing visibly
+     armed until a second, separate tap. Unarming in place, with no rebuild,
+     keeps the row the finger is actually on in sync with what is on screen. */
+  let unarmPrev = null;
   rows.slice(0,25).forEach(r=>{
     const row=el("div","item");
     const d=el("div","dot");
@@ -328,14 +334,20 @@ function paintTrack(){
                 el("span",null,`${r.date.slice(5)} · ${r.time||""} · ${r.who}`));
     const amt=el("div","a",money2(r.amount));
     row.append(d,mdiv,amt);
+    const unarm = () => {
+      row.classList.remove("armed");
+      amt.classList.remove("hide");
+      row.querySelectorAll(".del,.cancel").forEach(b=>b.remove());
+    };
 
     // Two taps to delete: one to arm, one to confirm. No dialog, and no way to
     // lose an entry by brushing the screen.
     row.onclick = () => {
       if(row.classList.contains("armed")) return;
-      document.querySelectorAll(".item.armed").forEach(x=>paintTrack());
+      if(unarmPrev) unarmPrev();
+      unarmPrev = unarm;
       row.classList.add("armed");
-      amt.remove();
+      amt.classList.add("hide");
       const del=el("button","del","Delete");
       const cancel=el("button","cancel","Keep");
       del.onclick = async (ev) => {
@@ -346,7 +358,7 @@ function paintTrack(){
         else { del.disabled=false; del.textContent="Delete";
                mdiv.querySelector("span").textContent = res.error; }
       };
-      cancel.onclick = (ev) => { ev.stopPropagation(); paintTrack(); };
+      cancel.onclick = (ev) => { ev.stopPropagation(); unarm(); unarmPrev=null; };
       row.append(cancel, del);
     };
     rc.appendChild(row);
@@ -406,13 +418,16 @@ $("#refresh").onclick = async ()=>{
   try{ await loadData(); paintTrack(); }catch(e){ $("#totalSub").textContent=e.message; }
   $("#refresh").textContent="Refresh";
 };
+/* One field, not two: the code lives in the URL itself as ?t=…, the same way the
+   ?url=&t= deep link already works below. Paste either the exec URL with the code
+   on the end, or the full deep link — both carry a "t" param to pull the code from. */
 $("#connect").onclick = async ()=>{
-  let url=$("#urlIn").value.trim(), token=$("#tokIn").value.trim();
+  let url=$("#urlIn").value.trim(), token="";
   try { const u=new URL(url);
-    if(u.searchParams.get("t")){ token=u.searchParams.get("t"); }
+    token = u.searchParams.get("t") || "";
     if(u.searchParams.get("url")){ url=u.searchParams.get("url"); }
     else { u.search=""; url=u.toString(); } } catch {}
-  if(!url||!token){ $("#setupMsg").textContent="Both the URL and the code are needed."; return; }
+  if(!url||!token){ $("#setupMsg").textContent="Paste the full link — it should end …?t=your-code."; return; }
   cfg={...cfg,url,token}; $("#setupMsg").textContent="Checking…";
   try{ store.set(cfg); await loadData(); boot(); }
   catch(e){ $("#setupMsg").textContent=e.message; }

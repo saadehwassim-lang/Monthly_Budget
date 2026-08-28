@@ -49,10 +49,12 @@ Still in the sheet: **Extensions → Apps Script**.
    - Execute as: **Me**
    - Who has access: **Anyone**
    - Deploy, then copy the URL ending in `/exec`
+5. Add `?t=` and your code to the end of it — `…/exec?t=YOUR_TOKEN` — and keep
+   that combined link. It is the one thing the app asks you to paste.
 
 > "Anyone" sounds alarming but is required — your phone is an anonymous visitor to
 > Google. The URL is unguessable and the script refuses every request without your
-> token, so the token is the actual lock. Keep it out of screenshots.
+> token, so the token is the actual lock. Keep the combined link out of screenshots.
 
 **Whenever you edit the script, deploy again** (Deploy → Manage deployments → edit →
 Version: New version). Saving alone does not update the live URL — this catches
@@ -73,11 +75,12 @@ GitHub Pages* by hand from the **Actions** tab. A minute later the app is at
 https://YOUR-USERNAME.github.io/YOUR-REPO/
 ```
 
-with the read-only demo at `/demo/`. Open it on your phone, paste the `/exec` URL
-and your token, press Connect, then **Share → Add to Home Screen** so it opens
-like a normal app.
+with the read-only demo at `/demo/`. Open it on your phone, paste the combined
+link from step 5 above — the `/exec` URL with `?t=YOUR_TOKEN` on the end — into
+the one field on the Connect screen, press Connect, then **Share → Add to Home
+Screen** so it opens like a normal app.
 
-To skip the typing, open this instead and it fills itself in:
+To skip the typing entirely, open this instead and it fills itself in:
 
 ```
 https://YOUR-USERNAME.github.io/YOUR-REPO/?url=https://script.google.com/macros/s/…/exec&t=YOUR_TOKEN

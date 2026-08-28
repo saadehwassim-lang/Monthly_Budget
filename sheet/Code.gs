@@ -128,6 +128,32 @@ function monthlyRows_() {
   return out;
 }
 
+/**
+ * Removes one row from Transactions by its key (column A). Used for Undo and for
+ * tapping a Recent entry — both send { action: 'delete', key }.
+ *
+ * Column A is searched from the bottom up because a delete almost always targets
+ * something logged in the last few minutes, and the same script lock as a save
+ * keeps a delete from racing a concurrent append.
+ */
+function deleteRow_(key) {
+  if (!key) return json_({ ok: false, error: 'No key given' });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = SpreadsheetApp.getActive().getSheetByName(TX_SHEET);
+    const last = sh.getLastRow();
+    if (last < 2) return json_({ ok: false, error: 'That entry is gone already' });
+    const keys = sh.getRange(2, 1, last - 1, 1).getValues();
+    for (var i = keys.length - 1; i >= 0; i--) {
+      if (String(keys[i][0]) === key) { sh.deleteRow(i + 2); return json_({ ok: true }); }
+    }
+    return json_({ ok: false, error: 'That entry is gone already' });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Recent transactions, newest first. */
 function readTransactions_(months) {
   const sh = SpreadsheetApp.getActive().getSheetByName(TX_SHEET);
