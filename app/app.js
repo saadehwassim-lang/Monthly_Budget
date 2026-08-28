@@ -12,7 +12,15 @@ const store = {
   queue(){ try{ return JSON.parse(localStorage.getItem("bud.queue")||"[]"); }catch{ return []; } },
   setQueue(q){ try{ localStorage.setItem("bud.queue", JSON.stringify(q)); }catch{} },
 };
+/* This is a personal, single-sheet project — always the same Apps Script, so the
+   app connects itself on open instead of asking. A device that already saved a
+   different config (testing against another sheet, say) keeps using that; this
+   only fills in what is otherwise empty. */
+const DEFAULT_URL   = "https://script.google.com/macros/s/AKfycbzDMT4kwJvcZHd2Cov-QYqj330PLEuiBQndoOvrvgUy20n-QJtpQQnPpJbzlWO5n0CdSw/exec";
+const DEFAULT_TOKEN = "REPLACE_WITH_A_LONG_RANDOM_STRING";
+
 let cfg = store.get();
+if(!cfg.url || !cfg.token){ cfg = { ...cfg, url: cfg.url||DEFAULT_URL, token: cfg.token||DEFAULT_TOKEN }; store.set(cfg); }
 let DATA = { categories: [], rows: [], people: ["Wassim","Jamela","Joint"], currency: "AED" };
 let who = cfg.who || "Wassim";
 
@@ -433,17 +441,20 @@ $("#connect").onclick = async ()=>{
   catch(e){ $("#setupMsg").textContent=e.message; }
 };
 
+function prefillSetup(){
+  $("#urlIn").value = cfg.url ? (cfg.token ? `${cfg.url}?t=${cfg.token}` : cfg.url) : "";
+}
 async function boot(){
   const u=new URL(location.href);
   const t=u.searchParams.get("t"), a=u.searchParams.get("url");
   if(t){ cfg={...cfg,token:t,...(a?{url:a}:{})}; store.set(cfg);
          history.replaceState({},"",location.pathname); }
-  if(!cfg.token||!cfg.url){ $("#setup").classList.remove("hide"); return; }
+  if(!cfg.token||!cfg.url){ prefillSetup(); $("#setup").classList.remove("hide"); return; }
   $("#setup").classList.add("hide"); $("#tabs").classList.remove("hide");
   const cached=loadCache();
   if(cached){ showTab("add"); paintAmount(); paintQueue(); }
   try{ await loadData(); }
-  catch(e){ if(!cached){ $("#setup").classList.remove("hide");
+  catch(e){ if(!cached){ prefillSetup(); $("#setup").classList.remove("hide");
     $("#setupMsg").textContent=e.message; return; } }
   showTab("add"); paintAmount(); paintQueue(); flushQueue();
 }

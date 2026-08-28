@@ -61,7 +61,14 @@ async function loadData(){
   DATA={categories:d.categories,rows:d.rows,people:d.people,currency:d.currency};
   return DATA;
 }`)
-demoApp = must(demoApp, `  if(!cfg.token||!cfg.url){ $("#setup").classList.remove("hide"); return; }`,
+/* The real app auto-fills a default URL and token so it can connect itself —
+   fine for the app talking to the real sheet, but the demo promises nothing is
+   saved, so it must not write those into its own localStorage. Drop the
+   defaulting before boot() ever forces cfg to "demo"/"demo" below. */
+demoApp = must(demoApp,
+  /if\(!cfg\.url \|\| !cfg\.token\)\{ cfg = \{[\s\S]*?\}; store\.set\(cfg\); \}\n/,
+  "");
+demoApp = must(demoApp, `  if(!cfg.token||!cfg.url){ prefillSetup(); $("#setup").classList.remove("hide"); return; }`,
                         `  cfg={url:"demo",token:"demo"};`);
 demoApp = must(demoApp, `  showTab("add"); paintAmount(); paintQueue(); flushQueue();`,
                         `  showTab("track"); paintAmount();`);
