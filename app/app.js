@@ -461,4 +461,6 @@ addEventListener("visibilitychange", () => { if (!document.hidden) refreshIfStal
 addEventListener("focus", () => refreshIfStale());
 addEventListener("online", async () => { await flushQueue(); refreshIfStale(true); });
 boot();
-if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* Relative paths throughout, so the app works both at a domain root and under a
+   GitHub Pages project path like /monthly_budget/. */
+if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{});

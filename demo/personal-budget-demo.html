@@ -1,4 +1,13 @@
-<title>Personal Budget</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="description" content="A read-only demo of the Personal Budget app, with made-up spending.">
+<meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Personal Budget — demo</title>
 <style>
 :root{
   color-scheme: light;
@@ -152,6 +161,8 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
 .demobar b{font-weight:650}
 nav{justify-content:center;gap:min(30vw,260px)}
 </style>
+</head>
+<body>
 <div class="demowrap"><div class="demobar">
   <b>Demo.</b> Your real categories and budgets, with made-up spending for this month.
   Add a transaction and watch the budgets move. Nothing is saved.
@@ -704,6 +715,10 @@ addEventListener("visibilitychange", () => { if (!document.hidden) refreshIfStal
 addEventListener("focus", () => refreshIfStale());
 addEventListener("online", async () => { await flushQueue(); refreshIfStale(true); });
 boot();
+/* Relative paths throughout, so the app works both at a domain root and under a
+   GitHub Pages project path like /monthly_budget/. */
 
 
 </script>
+</body>
+</html>

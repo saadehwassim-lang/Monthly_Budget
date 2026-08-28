@@ -1,4 +1,14 @@
 import fs from "fs";
+
+/* Every rewrite below is anchored to a literal from the real app. If the app
+   changes shape the anchor stops matching, and a silent no-op would ship a demo
+   that quietly diverges from it — so a miss is a build failure instead. */
+const must = (src, find, repl) => {
+  const out = src.replace(find, repl);
+  if (out === src) throw new Error(`build-demo: nothing matched ${find}`);
+  return out;
+};
+
 const html = fs.readFileSync("app/index.html","utf8");
 const app  = fs.readFileSync("app/app.js","utf8");
 const style= html.match(/<style>[\s\S]*?<\/style>/)[0];
@@ -30,8 +40,7 @@ rows.forEach((r,i)=>{ r.key="d"+i; r.currency="AED"; r.note="";
   r.month=MON[Number(r.date.slice(5,7))-1]; r.year=Number(r.date.slice(0,4)); });
 rows.sort((a,b)=>(a.date+a.time)<(b.date+b.time)?1:-1);
 
-const demoApp = app
-  .replace(/\/\* ── api ─[\s\S]*?^async function loadData\(\) \{[\s\S]*?^\}/m,
+let demoApp = must(app, /\/\* ── api ─[\s\S]*?^async function loadData\(\) \{[\s\S]*?^\}/m,
 `/* ── api: replaced for the demo. Nothing leaves this page. ─────────────── */
 const DEMO = ${JSON.stringify({ ok:true, currency:"AED", people:["Wassim","Jamela","Joint"],
                                 categories:cats, rows })};
@@ -52,14 +61,28 @@ async function loadData(){
   DATA={categories:d.categories,rows:d.rows,people:d.people,currency:d.currency};
   return DATA;
 }`)
-  .replace(`  if(!cfg.token||!cfg.url){ $("#setup").classList.remove("hide"); return; }`,
-           `  cfg={url:"demo",token:"demo"};`)
-  .replace(`  showTab("add"); paintAmount(); paintQueue(); flushQueue();`,
-           `  showTab("track"); paintAmount();`)
-  .replace(`if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});`,"");
+demoApp = must(demoApp, `  if(!cfg.token||!cfg.url){ $("#setup").classList.remove("hide"); return; }`,
+                        `  cfg={url:"demo",token:"demo"};`);
+demoApp = must(demoApp, `  showTab("add"); paintAmount(); paintQueue(); flushQueue();`,
+                        `  showTab("track"); paintAmount();`);
+/* The demo is one self-contained page with no service worker beside it. */
+demoApp = must(demoApp, /if\("serviceWorker" in navigator\)[\s\S]*?\.catch\(\(\)=>\{\}\);/, "");
 
 fs.mkdirSync("demo",{recursive:true});
-fs.writeFileSync("demo/personal-budget-demo.html", `<title>Personal Budget</title>
+fs.copyFileSync("app/icon.svg","demo/icon.svg");
+/* A standalone page, so it carries the head the app's index.html has: without a
+   doctype it renders in quirks mode, without a viewport a phone lays it out at
+   980px and shrinks it, and without a charset the em dashes arrive as mojibake. */
+fs.writeFileSync("demo/personal-budget-demo.html", `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="description" content="A read-only demo of the Personal Budget app, with made-up spending.">
+<meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Personal Budget — demo</title>
 ${style}
 <style>
 .demowrap{flex:0 0 auto;padding:10px 12px 0}
@@ -69,6 +92,8 @@ ${style}
 .demobar b{font-weight:650}
 nav{justify-content:center;gap:min(30vw,260px)}
 </style>
+</head>
+<body>
 <div class="demowrap"><div class="demobar">
   <b>Demo.</b> Your real categories and budgets, with made-up spending for this month.
   Add a transaction and watch the budgets move. Nothing is saved.
@@ -76,5 +101,7 @@ nav{justify-content:center;gap:min(30vw,260px)}
 ${bodyHtml}
 <script>
 ${demoApp}
-</script>`);
+</script>
+</body>
+</html>`);
 console.log("demo built");
