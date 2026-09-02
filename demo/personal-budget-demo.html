@@ -53,6 +53,14 @@ nav button.on{color:var(--me)}
 h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .muted{color:var(--muted)} .tnum{font-variant-numeric:tabular-nums}
+.monthNav{display:flex;align-items:center;gap:4px}
+.monthNav h2{margin:0}
+.monthNav button{border:0;background:none;color:var(--ink2);font:600 18px/1 inherit;
+  cursor:pointer;padding:4px 6px;border-radius:8px}
+.monthNav button:active{background:var(--sunk)}
+.monthLink{display:block;font-size:12.5px;color:var(--me);text-decoration:none;
+  margin:0 0 10px;cursor:pointer}
+.monthLink:active{opacity:.7}
 
 /* entry */
 #add{display:flex;flex-direction:column}
@@ -200,6 +208,7 @@ nav{justify-content:center;gap:min(30vw,260px)}
         <button data-d="pick">Another day</button>
         <input type="date" id="datePick" hidden>
       </div>
+      <a href="#" class="monthLink hide" id="seeMonthBudget"></a>
       <div class="months" id="monthsPick">
         <span class="lbl">Split</span>
         <button data-n="1" class="on">1</button>
@@ -248,16 +257,23 @@ nav{justify-content:center;gap:min(30vw,260px)}
 
   <section id="track" class="hide">
     <div class="card">
-      <div class="row"><h2 style="margin:0" id="monthLabel">This month</h2>
-        <button class="back" id="refresh" style="width:auto;margin:0;padding:7px 13px;font-size:13px">Refresh</button></div>
+      <div class="row">
+        <div class="monthNav">
+          <button id="prevMonth" aria-label="Previous month">‹</button>
+          <h2 style="margin:0" id="monthLabel">This month</h2>
+          <button id="nextMonth" aria-label="Next month">›</button>
+        </div>
+        <button class="back" id="refresh" style="width:auto;margin:0;padding:7px 13px;font-size:13px">Refresh</button>
+      </div>
+      <a href="#" class="monthLink hide" id="backToToday">Back to this month</a>
       <div class="hero" id="total">—</div>
       <div class="muted" id="totalSub" style="font-size:14px">—</div>
       <div class="bar"><div class="fill" id="heroFill"></div><div class="mark" id="heroMark"></div></div>
       <div class="muted" id="heroNote" style="font-size:12.5px"></div>
       <div class="tiles">
         <div class="tile"><div class="k">Left</div><div class="v" id="tLeft">—</div></div>
-        <div class="tile"><div class="k">Safe / day</div><div class="v" id="tSafe">—</div></div>
-        <div class="tile"><div class="k">Today</div><div class="v" id="tToday">—</div></div>
+        <div class="tile"><div class="k" id="tSafeLabel">Safe / day</div><div class="v" id="tSafe">—</div></div>
+        <div class="tile"><div class="k" id="tTodayLabel">Today</div><div class="v" id="tToday">—</div></div>
       </div>
     </div>
     <div class="card"><h2>Budget by category</h2><div id="meters"></div></div>
@@ -374,29 +390,53 @@ async function removeEntry(key){
 }
 
 /* ── budget maths ────────────────────────────────────────────────────────── */
+/* Every function here takes an optional {m,y} — omit it and you get the real
+   current month, exactly as before, which is what the entry flow's category
+   and segment buttons always want (their "0 of 1200" status is always about
+   this month, whatever date you're backdating an entry to). The Budget tab is
+   the one place that browses other months, via viewingMonth() below. */
 function currentMonth(){ const d=new Date(); return { m: MONTHS[d.getMonth()], y: d.getFullYear() }; }
-function monthRows(){ const {m,y}=currentMonth();
+function monthRows(my){ const {m,y}=my||currentMonth();
   return DATA.rows.filter(r => r.month===m && Number(r.year)===y); }
-function spentBy(){
+function spentBy(my){
   const by = {};
-  for (const r of monthRows()) {
+  for (const r of monthRows(my)) {
     const k = `${r.category}|${r.segment}`;
     by[k] = (by[k]||0) + Number(r.amount||0);
   }
   return by;
 }
-function elapsed(){
-  const d = new Date(), days = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
-  return { frac: d.getDate()/days, day: d.getDate(), days, left: days-d.getDate() };
+/* live: my is (or defaults to) the real current month, so "day X of Y" and a
+   safe-to-spend pace are meaningful. Otherwise there is no "today" inside the
+   month being browsed — a past month reads as fully elapsed, a future one as
+   not yet started, and neither gets a pace judgement. */
+function elapsed(my){
+  const c = currentMonth(), target = my || c;
+  const days = new Date(target.y, MONTHS.indexOf(target.m)+1, 0).getDate();
+  if (target.m===c.m && target.y===c.y) {
+    const d = new Date();
+    return { frac: d.getDate()/days, day: d.getDate(), days, left: days-d.getDate(), live:true, past:false };
+  }
+  const idx = MONTHS.indexOf(target.m)+target.y*12, cidx = MONTHS.indexOf(c.m)+c.y*12;
+  const past = idx < cidx;
+  return past ? { frac:1, day:days, days, left:0, live:false, past:true }
+              : { frac:0, day:0, days, left:days, live:false, past:false };
 }
+
+/* Which month the Budget tab is showing — null means "the real current
+   month," so a fresh visit is always live unless something explicitly sent
+   you to another month (the date-picker link, or ‹ / › on the tab itself). */
+let viewedMonth = null;
+function viewingMonth(){ return viewedMonth || currentMonth(); }
+function sameMonth(a,b){ return a.m===b.m && a.y===b.y; }
 /** OK below 90% of the pro-rated line, Close approaching it, Over past budget. */
-function statusOf(spent, budget){
+function statusOf(spent, budget, my){
   if (!budget) return spent>0 ? { k:"nobudget", label:"no budget", col:"var(--muted)" }
                               : { k:"none", label:"", col:"var(--muted)" };
   if (spent > budget)        return { k:"over",  label:"over",     col:"var(--over)" };
   if (spent/budget >= 0.9)   return { k:"close", label:"close",    col:"var(--close)" };
-  const e = elapsed().frac;
-  if (e>0.1 && (spent/budget)/e >= 1.35) return { k:"close", label:"ahead of pace", col:"var(--close)" };
+  const e = elapsed(my);
+  if (e.live && e.frac>0.1 && (spent/budget)/e.frac >= 1.35) return { k:"close", label:"ahead of pace", col:"var(--close)" };
   return { k:"ok", label:"on track", col:"var(--ok)" };
 }
 
@@ -447,6 +487,19 @@ function paintWhen(){
     b.classList.toggle("on", on);
     if(b.dataset.d==="pick") b.textContent = on ? dayLabel(sel) : "Another day";
   });
+
+  // Backdating (or splitting into a future month) is exactly when you'd want
+  // to see how that other month looks, not this one — so once the picked date
+  // actually falls outside today's month, offer a straight line to it.
+  const link = $("#seeMonthBudget"), c = currentMonth();
+  const d = new Date(sel+"T12:00:00"), my = { m:MONTHS[d.getMonth()], y:d.getFullYear() };
+  if (spentOn && !sameMonth(my,c)) {
+    link.textContent = `See ${my.m} ${my.y} budget →`;
+    link.classList.remove("hide");
+    link.onclick = ev => { ev.preventDefault(); viewedMonth = my; showTab("track"); };
+  } else {
+    link.classList.add("hide");
+  }
 }
 function showStep(id){ ["stepAmount","stepCat","stepSeg","stepSaved"]
   .forEach(s => $("#"+s).classList.toggle("hide", s!==id)); }
@@ -564,8 +617,8 @@ async function doSave(){
 }
 
 /* ── budget view ─────────────────────────────────────────────────────────── */
-function meter(name, spent, budget, subs){
-  const st = statusOf(spent,budget), e = elapsed();
+function meter(name, spent, budget, subs, my){
+  const st = statusOf(spent,budget,my), e = elapsed(my);
   const box = el("div","meter");
   const top = el("div","top");
   top.append(el("div","nm",name),
@@ -576,7 +629,7 @@ function meter(name, spent, budget, subs){
   const fill=el("div","fill");
   fill.style.width=(budget?Math.min(100,spent/budget*100):0)+"%";
   fill.style.background=st.col; bar.appendChild(fill);
-  if(budget){ const mk=el("div","mark"); mk.style.left=Math.min(100,e.frac*100)+"%";
+  if(budget && e.live){ const mk=el("div","mark"); mk.style.left=Math.min(100,e.frac*100)+"%";
     mk.title=`On-budget line for day ${e.day} of ${e.days}`; bar.appendChild(mk); }
   box.appendChild(bar);
 
@@ -584,8 +637,9 @@ function meter(name, spent, budget, subs){
   if(st.label){ const p=el("span","pill",st.label); p.style.color=st.col; p.style.borderColor=st.col; note.appendChild(p); }
   if(budget){
     const leftAmt = budget-spent;
+    const perDay = e.live ? ` · ${money(leftAmt/Math.max(e.left,1))}/day for ${e.left} days` : "";
     note.appendChild(el("span",null, leftAmt>=0
-      ? `${money(leftAmt)} left · ${money(leftAmt/Math.max(e.left,1))}/day for ${e.left} days`
+      ? `${money(leftAmt)} left${perDay}`
       : `${money(-leftAmt)} over`));
   }
   box.appendChild(note);
@@ -593,7 +647,7 @@ function meter(name, spent, budget, subs){
   if(subs?.length){
     const wrap=el("div","subs");
     subs.filter(s=>s.spent>0||s.budget>0).sort((a,b)=>b.spent-a.spent).forEach(s=>{
-      const ss=statusOf(s.spent,s.budget);
+      const ss=statusOf(s.spent,s.budget,my);
       const row=el("div","sub");
       row.appendChild(el("span",null,s.name));
       const mini=el("div","mini");
@@ -609,8 +663,9 @@ function meter(name, spent, budget, subs){
 }
 
 function paintTrack(){
-  const spent=spentBy(), e=elapsed(), {m,y}=currentMonth();
-  $("#monthLabel").textContent = `${m} ${y}`;
+  const my = viewingMonth(), spent=spentBy(my), e=elapsed(my);
+  $("#monthLabel").textContent = `${my.m} ${my.y}`;
+  $("#backToToday").classList.toggle("hide", e.live);
 
   let totalBudget=0, totalSpent=0;
   const cats = DATA.categories.map(c=>{
@@ -621,28 +676,43 @@ function paintTrack(){
   });
 
   $("#total").innerHTML = short(totalSpent) + (totalBudget?` <small>of ${short(totalBudget)}</small>`:"");
-  const line = totalBudget*e.frac, diff = totalSpent-line;
-  $("#totalSub").textContent = !totalBudget ? "Set budgets in the Monthly tab."
-    : Math.abs(diff)<1 ? "Exactly on the line for today"
-    : diff>0 ? `${money(diff)} above the line for day ${e.day}`
-             : `${money(-diff)} under the line — good`;
+  if(e.live){
+    const line = totalBudget*e.frac, diff = totalSpent-line;
+    $("#totalSub").textContent = !totalBudget ? "Set budgets in the Monthly tab."
+      : Math.abs(diff)<1 ? "Exactly on the line for today"
+      : diff>0 ? `${money(diff)} above the line for day ${e.day}`
+               : `${money(-diff)} under the line — good`;
+  } else {
+    $("#totalSub").textContent = !totalBudget ? "Set budgets in the Monthly tab."
+      : e.past ? `${money(totalSpent)} spent that month`
+               : `${money(totalBudget)} budgeted for that month`;
+  }
   $("#heroFill").style.width = totalBudget?Math.min(100,totalSpent/totalBudget*100)+"%":"0";
-  $("#heroFill").style.background = statusOf(totalSpent,totalBudget).col;
-  $("#heroMark").style.left = Math.min(100,e.frac*100)+"%";
-  $("#heroNote").textContent = totalBudget
-    ? `Day ${e.day} of ${e.days} — the mark is where an even spender would be.` : "";
+  $("#heroFill").style.background = statusOf(totalSpent,totalBudget,my).col;
+  $("#heroMark").classList.toggle("hide", !e.live);
+  if(e.live) $("#heroMark").style.left = Math.min(100,e.frac*100)+"%";
+  $("#heroNote").textContent = !totalBudget ? ""
+    : e.live ? `Day ${e.day} of ${e.days} — the mark is where an even spender would be.`
+    : e.past ? "That month is over." : "That month hasn't started yet.";
+
   $("#tLeft").textContent = totalBudget?short(Math.max(totalBudget-totalSpent,0)):"—";
-  $("#tSafe").textContent = totalBudget?short(Math.max(totalBudget-totalSpent,0)/Math.max(e.left,1)):"—";
-  $("#tToday").textContent = short(DATA.rows.filter(r=>r.date===todayISO()).reduce((a,r)=>a+Number(r.amount||0),0));
+  $("#tSafeLabel").textContent = e.live || !e.past ? "Safe / day" : "Avg / day";
+  $("#tSafe").textContent = e.past ? short(totalSpent/Math.max(e.days,1))
+    : totalBudget ? short(Math.max(totalBudget-totalSpent,0)/Math.max(e.left,1)) : "—";
+  $("#tTodayLabel").textContent = e.live ? "Today" : "Entries";
+  $("#tToday").textContent = e.live
+    ? short(DATA.rows.filter(r=>r.date===todayISO()).reduce((a,r)=>a+Number(r.amount||0),0))
+    : String(monthRows(my).length);
 
   const rank={over:0,close:1,ok:2,nobudget:3,none:4};
   const mm=$("#meters"); mm.innerHTML="";
-  cats.sort((a,b)=>rank[statusOf(a.spent,a.budget).k]-rank[statusOf(b.spent,b.budget).k] || b.spent-a.spent)
-      .forEach(c=>mm.appendChild(meter(c.name,c.spent,c.budget,c.subs)));
+  cats.sort((a,b)=>rank[statusOf(a.spent,a.budget,my).k]-rank[statusOf(b.spent,b.budget,my).k] || b.spent-a.spent)
+      .forEach(c=>mm.appendChild(meter(c.name,c.spent,c.budget,c.subs,my)));
 
   const rc=$("#recent"); rc.innerHTML="";
-  const rows=monthRows();
-  if(!rows.length) rc.appendChild(el("p","muted","Nothing logged this month yet."));
+  const rows=monthRows(my);
+  if(!rows.length) rc.appendChild(el("p","muted", e.live ? "Nothing logged this month yet."
+    : "Nothing logged that month."));
   /* Only one row can be armed at a time. Swapping to a different row used to
      call paintTrack() to unarm the old one, which rebuilds #recent from scratch —
      but that also detached the row the tap just landed on, so nothing visibly
@@ -708,12 +778,24 @@ function showTab(n){
      abandons whatever wasn't finished yet, so Add is never ambiguous: it's
      either a fresh 0, or nothing was lost because it was already saved. */
   if(n==="track"){ amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1; }
+  /* A month you jumped to from a backdated entry is a one-trip thing — the
+     next time you open Budget on its own, it should be this month again. */
+  if(n==="add"){ viewedMonth=null; }
   ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
   if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); paintAmount(); }
   $(".wrap").scrollTop=0;
 }
+function shiftMonth(delta){
+  const v = viewingMonth();
+  const idx = MONTHS.indexOf(v.m) + delta, y = v.y + Math.floor(idx/12);
+  viewedMonth = { m: MONTHS[((idx%12)+12)%12], y };
+  paintTrack();
+}
+$("#prevMonth").onclick   = ()=> shiftMonth(-1);
+$("#nextMonth").onclick   = ()=> shiftMonth(1);
+$("#backToToday").onclick = ev => { ev.preventDefault(); viewedMonth=null; paintTrack(); };
 document.querySelectorAll(".pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
 document.querySelectorAll("#whenPick button").forEach(b=>b.onclick=()=>{
   if(b.dataset.d==="pick"){

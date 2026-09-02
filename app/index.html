@@ -60,6 +60,14 @@ nav button.on{color:var(--me)}
 h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .muted{color:var(--muted)} .tnum{font-variant-numeric:tabular-nums}
+.monthNav{display:flex;align-items:center;gap:4px}
+.monthNav h2{margin:0}
+.monthNav button{border:0;background:none;color:var(--ink2);font:600 18px/1 inherit;
+  cursor:pointer;padding:4px 6px;border-radius:8px}
+.monthNav button:active{background:var(--sunk)}
+.monthLink{display:block;font-size:12.5px;color:var(--me);text-decoration:none;
+  margin:0 0 10px;cursor:pointer}
+.monthLink:active{opacity:.7}
 
 /* entry */
 #add{display:flex;flex-direction:column}
@@ -194,6 +202,7 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
         <button data-d="pick">Another day</button>
         <input type="date" id="datePick" hidden>
       </div>
+      <a href="#" class="monthLink hide" id="seeMonthBudget"></a>
       <div class="months" id="monthsPick">
         <span class="lbl">Split</span>
         <button data-n="1" class="on">1</button>
@@ -242,16 +251,23 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
 
   <section id="track" class="hide">
     <div class="card">
-      <div class="row"><h2 style="margin:0" id="monthLabel">This month</h2>
-        <button class="back" id="refresh" style="width:auto;margin:0;padding:7px 13px;font-size:13px">Refresh</button></div>
+      <div class="row">
+        <div class="monthNav">
+          <button id="prevMonth" aria-label="Previous month">‹</button>
+          <h2 style="margin:0" id="monthLabel">This month</h2>
+          <button id="nextMonth" aria-label="Next month">›</button>
+        </div>
+        <button class="back" id="refresh" style="width:auto;margin:0;padding:7px 13px;font-size:13px">Refresh</button>
+      </div>
+      <a href="#" class="monthLink hide" id="backToToday">Back to this month</a>
       <div class="hero" id="total">—</div>
       <div class="muted" id="totalSub" style="font-size:14px">—</div>
       <div class="bar"><div class="fill" id="heroFill"></div><div class="mark" id="heroMark"></div></div>
       <div class="muted" id="heroNote" style="font-size:12.5px"></div>
       <div class="tiles">
         <div class="tile"><div class="k">Left</div><div class="v" id="tLeft">—</div></div>
-        <div class="tile"><div class="k">Safe / day</div><div class="v" id="tSafe">—</div></div>
-        <div class="tile"><div class="k">Today</div><div class="v" id="tToday">—</div></div>
+        <div class="tile"><div class="k" id="tSafeLabel">Safe / day</div><div class="v" id="tSafe">—</div></div>
+        <div class="tile"><div class="k" id="tTodayLabel">Today</div><div class="v" id="tToday">—</div></div>
       </div>
     </div>
     <div class="card"><h2>Budget by category</h2><div id="meters"></div></div>
