@@ -1,7 +1,7 @@
 {
   "currency": "AED",
   "timezone": "Asia/Dubai",
-  "people": ["Wassim", "Jamela", "Joint"],
+  "people": ["Wassim", "Jamela"],
   "categories": [
     { "name": "Home Expenses", "segments": [
       "Mortgage/Rent","Phone Bills","Electricity and Water Bill","Gas Bill",

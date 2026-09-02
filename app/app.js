@@ -21,7 +21,7 @@ const DEFAULT_TOKEN = "REPLACE_WITH_A_LONG_RANDOM_STRING";
 
 let cfg = store.get();
 if(!cfg.url || !cfg.token){ cfg = { ...cfg, url: cfg.url||DEFAULT_URL, token: cfg.token||DEFAULT_TOKEN }; store.set(cfg); }
-let DATA = { categories: [], rows: [], people: ["Wassim","Jamela","Joint"], currency: "AED" };
+let DATA = { categories: [], rows: [], people: ["Wassim","Jamela"], currency: "AED" };
 let who = cfg.who || "Wassim";
 
 const money  = n => `${DATA.currency} ${Math.round(Number(n)||0).toLocaleString("en-US")}`;
@@ -135,7 +135,9 @@ function statusOf(spent, budget){
 }
 
 /* ── entry ───────────────────────────────────────────────────────────────── */
-let amount="", catIdx=null, segIdx=null, lastSavedKey=null;
+let amount="", catIdx=null, segIdx=null, lastSavedKeys=[];
+let splitMonths=1;                               // 1 = log it as one transaction, as before
+const undoLabel = n => n>1 ? `Undo — remove all ${n} entries` : "Undo — remove that entry";
 
 /* Which day the money was actually spent. Defaults to today, because that is the
    answer nine times in ten — but a purchase logged the next morning belongs to the
@@ -148,6 +150,23 @@ function spentAtISO(){ return spentOn ? `${spentOn}T12:00:00+04:00` : null; }
 function dayLabel(iso){
   const d = new Date(iso + "T12:00:00");
   return d.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+}
+/* For a rent-style split: same day next month, clamped when that month is
+   shorter (Jan 31 → Feb 28, not the overflow you'd get from naive date math). */
+function addMonthsClamped(iso, n){
+  const d = new Date(iso + "T12:00:00");
+  const day = d.getDate();
+  const t = new Date(d.getFullYear(), d.getMonth()+n, 1);
+  t.setDate(Math.min(day, new Date(t.getFullYear(), t.getMonth()+1, 0).getDate()));
+  return isoDay(t);
+}
+/* Splits amt into n parts that round to 2dp and still sum to exactly amt — the
+   remainder from rounding lands on the last part rather than drifting away. */
+function splitAmount(amt, n){
+  const part = Math.round(amt/n*100)/100;
+  const parts = Array(n-1).fill(part);
+  parts.push(Math.round((amt - part*(n-1))*100)/100);
+  return parts;
 }
 function paintWhen(){
   const today = isoDay(new Date());
@@ -169,8 +188,14 @@ function paintAmount(){
   const v=$("#amountView");
   v.innerHTML = `<small>${DATA.currency}</small>${amount||"0"}`;
   v.classList.toggle("zero", !amount);
-  $("#toCat").disabled = !(parseFloat(amount)>0);
-  $("#amountHint").textContent = parseFloat(amount)>0 ? "" : "How much?";
+  const amt = parseFloat(amount);
+  $("#toCat").disabled = !(amt>0);
+  $("#splitHint").textContent = (amt>0 && splitMonths>1)
+    ? `${money2(amt/splitMonths)}/mo × ${splitMonths} months` : "";
+}
+function paintMonths(){
+  document.querySelectorAll("#monthsPick button").forEach(b=>
+    b.classList.toggle("on", Number(b.dataset.n)===splitMonths));
 }
 function key(k){
   if(k==="del") amount=amount.slice(0,-1);
@@ -220,31 +245,48 @@ function paintSegs(){
 async function save(){
   const amt=parseFloat(amount), c=DATA.categories[catIdx], seg=c.segments[segIdx];
   const bud=c.budgets[segIdx]||0;
-  $("#savedAmt").textContent = money2(amt);
+  const n=splitMonths, parts=splitAmount(amt,n);
+  const baseIso = spentOn ?? isoDay(new Date());  // the month everything else is chained from
+
+  $("#savedAmt").textContent = n>1 ? `${money2(amt)} · split ${n}×` : money2(amt);
   $("#savedCat").textContent = `${c.name} › ${seg} · ${who}`
-    + (spentOn ? ` · ${dayLabel(spentOn)}` : "");
+    + (spentOn ? ` · ${dayLabel(spentOn)}` : "")
+    + (n>1 ? ` · ${money2(parts[0])}/mo` : "");
   $("#savedBudget").textContent = "";
   showStep("stepSaved");
 
-  const at = spentAtISO();
-  const res = await send({ amount:amt, who, category:c.name, segment:seg, ...(at?{at}:{}) });
-  lastSavedKey = res.ok ? res.row.key : (res.localKey || null);
-  $("#undoLast").classList.toggle("hide", !lastSavedKey);
-  if(res.ok){
-    DATA.rows.unshift({ ...res.row });
-    try{ localStorage.setItem("bud.cache", JSON.stringify(DATA)); }catch{}
+  // Entry 0 keeps today/yesterday/pick exactly as a single save always has — the
+  // server's own clock still wins when nothing was backdated. Every later month
+  // is unambiguously in the future, so it has to carry an explicit date.
+  const keys=[]; let failed=false, lastErr="";
+  for(let i=0;i<n;i++){
+    const iso = i===0 ? baseIso : addMonthsClamped(baseIso,i);
+    const at  = i===0 ? spentAtISO() : `${iso}T12:00:00+04:00`;
+    const res = await send({ amount:parts[i], who, category:c.name, segment:seg, ...(at?{at}:{}) });
+    if(res.ok){ DATA.rows.unshift({ ...res.row }); keys.push(res.row.key); }
+    else { failed=true; lastErr=res.error; if(res.localKey) keys.push(res.localKey); }
+  }
+  try{ localStorage.setItem("bud.cache", JSON.stringify(DATA)); }catch{}
+  lastSavedKeys = keys;
+  $("#undoLast").classList.toggle("hide", !keys.length);
+  $("#undoLast").textContent = undoLabel(keys.length);
+
+  if(!failed){
+    const sp = spentBy()[`${c.name}|${seg}`]||0;
     if(bud){
-      const sp = spentBy()[`${c.name}|${seg}`]||0;
       const st = statusOf(sp,bud);
       $("#savedBudget").textContent =
         `${seg}: ${money(sp)} of ${money(bud)} this month · ${money(Math.max(bud-sp,0))} left`;
       $("#savedBudget").style.color = st.col;
     }
   } else {
-    $("#savedBudget").textContent = "Saved on this phone — it will reach the sheet when you're back online.";
+    $("#savedBudget").textContent = n>1
+      ? `Some months saved on this phone — they'll reach the sheet when you're back online. (${lastErr})`
+      : "Saved on this phone — it will reach the sheet when you're back online.";
     paintQueue();
   }
-  amount=""; catIdx=null; segIdx=null; spentOn=null; paintAmount(); paintWhen();
+  amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1;
+  paintAmount(); paintWhen(); paintMonths();
 }
 
 /* ── budget view ─────────────────────────────────────────────────────────── */
@@ -378,7 +420,7 @@ function showTab(n){
   ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
-  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); }
+  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); }
   $(".wrap").scrollTop=0;
 }
 document.querySelectorAll(".pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
@@ -393,6 +435,10 @@ document.querySelectorAll("#whenPick button").forEach(b=>b.onclick=()=>{
   spentOn = Number(b.dataset.d)===0 ? null : isoDay(d);
   paintWhen();
 });
+document.querySelectorAll("#monthsPick button").forEach(b=>b.onclick=()=>{
+  splitMonths = Number(b.dataset.n);
+  paintMonths(); paintAmount();
+});
 $("#datePick").onchange = e => {
   const v=e.target.value; e.target.hidden=true;
   if(!v) return;
@@ -404,20 +450,27 @@ $("#backAmount").onclick = ()=> showStep("stepAmount");
 $("#backCat").onclick    = ()=>{ paintCats(); showStep("stepCat"); };
 $("#addAnother").onclick = ()=>{ paintWho(); showStep("stepAmount"); };
 $("#seeTrack").onclick   = ()=> showTab("track");
+/* A split save can leave several rows behind at once (one per month), so Undo
+   removes every key from that save, not just one — a half-undone split would
+   otherwise leave silent months behind with no way back to this screen. */
 $("#undoLast").onclick   = async ()=>{
   const b=$("#undoLast");
   b.textContent="Removing…"; b.disabled=true;
-  const res = await removeEntry(lastSavedKey);
-  if(res.ok){
-    lastSavedKey=null;
+  const remaining=[]; let lastErr="";
+  for(const k of lastSavedKeys){
+    const res = await removeEntry(k);
+    if(!res.ok){ remaining.push(k); lastErr=res.error; }
+  }
+  lastSavedKeys = remaining;
+  if(!remaining.length){
     $("#savedAmt").textContent="Removed";
     $("#savedCat").textContent="That entry is gone from the sheet.";
     $("#savedBudget").textContent="";
     b.classList.add("hide");
   } else {
-    $("#savedBudget").textContent = res.error;
+    $("#savedBudget").textContent = lastErr;
   }
-  b.textContent="Undo — remove that entry"; b.disabled=false;
+  b.textContent=undoLabel(remaining.length); b.disabled=false;
 };
 $("#retryQueue").onclick = ()=> flushQueue();
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));

@@ -19,7 +19,7 @@ const MONTHLY_SHEET = 'Monthly';      // the single source of truth
 const MONTHS        = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TZ            = 'Asia/Dubai';
 const CURRENCY      = 'AED';
-const PEOPLE        = ['Wassim', 'Jamela', 'Joint'];
+const PEOPLE        = ['Wassim', 'Jamela'];
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))

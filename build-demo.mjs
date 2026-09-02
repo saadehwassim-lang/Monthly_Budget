@@ -24,14 +24,14 @@ const today=new Date(); const rows=[];
 for(let d=1; d<=today.getDate(); d++){
   const dt=new Date(today.getFullYear(),today.getMonth(),d);
   const iso=dt.toLocaleDateString("en-CA");
-  if(d===1) rows.push({date:iso,time:"09:00",who:"Joint",amount:3465,
+  if(d===1) rows.push({date:iso,time:"09:00",who:"Wassim",amount:3465,
     category:"Home Expenses",segment:"Mortgage/Rent"});
   if(d===3) rows.push({date:iso,time:"10:00",who:"Wassim",amount:2940,
     category:"Investment",segment:"IBKR"});
   for(let i=0;i<Math.floor(rnd()*3);i++){
     const c=pick(cats), j=Math.floor(rnd()*c.segments.length);
     rows.push({date:iso,time:`${String(9+Math.floor(rnd()*13)).padStart(2,"0")}:${String(Math.floor(rnd()*60)).padStart(2,"0")}`,
-      who:pick(["Wassim","Jamela","Joint"]),
+      who:pick(["Wassim","Jamela"]),
       amount:Math.round(pick([25,45,90,140,220,380])*(0.6+rnd()*0.9)*100)/100,
       category:c.name, segment:c.segments[j]});
   }
@@ -42,7 +42,7 @@ rows.sort((a,b)=>(a.date+a.time)<(b.date+b.time)?1:-1);
 
 let demoApp = must(app, /\/\* ── api ─[\s\S]*?^async function loadData\(\) \{[\s\S]*?^\}/m,
 `/* ── api: replaced for the demo. Nothing leaves this page. ─────────────── */
-const DEMO = ${JSON.stringify({ ok:true, currency:"AED", people:["Wassim","Jamela","Joint"],
+const DEMO = ${JSON.stringify({ ok:true, currency:"AED", people:["Wassim","Jamela"],
                                 categories:cats, rows })};
 async function api(opts){
   await new Promise(r=>setTimeout(r,160));

@@ -63,30 +63,36 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 
 /* entry */
 #add{display:flex;flex-direction:column;min-height:calc(100dvh - 112px)}
-#add > .card{display:flex;flex-direction:column}
+#add > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
 #stepAmount,#stepCat,#stepSeg{flex:1}
-.who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:14px}
-.who button{flex:1;border:0;background:none;padding:9px 4px;border-radius:9px;color:var(--ink2);
+.who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:7px}
+.who button{flex:1;border:0;background:none;padding:6px 4px;border-radius:9px;color:var(--ink2);
   font:600 13px/1 inherit;cursor:pointer}
 .who button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
-.when{display:flex;gap:6px;margin:0 0 14px}
-.when button{flex:1;border:1px solid var(--edge);background:var(--key);padding:8px 4px;
+.when{display:flex;gap:6px;margin:0 0 6px}
+.when button{flex:1;border:1px solid var(--edge);background:var(--key);padding:5px 4px;
   border-radius:10px;color:var(--ink2);font:500 12.5px/1 inherit;cursor:pointer;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .when button.on{border-color:var(--me);color:var(--me);font-weight:650}
+.months{display:flex;gap:5px;align-items:center;margin:0 0 7px}
+.months .lbl{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;margin-right:1px}
+.months button{flex:1;border:1px solid var(--edge);background:var(--key);padding:5px 2px;
+  border-radius:9px;color:var(--ink2);font:600 12.5px/1 inherit;cursor:pointer}
+.months button.on{border-color:var(--me);color:var(--me);
+  background:color-mix(in srgb,var(--me) 10%,transparent)}
 .backdated{background:color-mix(in srgb,var(--close) 15%,transparent);
   color:var(--close);padding:9px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
-.crumb{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px}
+.crumb{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px}
 .crumb span{background:var(--sunk);padding:5px 10px;border-radius:99px;color:var(--ink2)}
 .crumb span.now{background:var(--me);color:#fff}
-.amount{margin-top:auto;text-align:center;font:650 clamp(44px,14vw,60px)/1 inherit;
-  letter-spacing:-.03em;padding:18px 0 4px;font-variant-numeric:tabular-nums}
+.amount{margin-top:auto;text-align:center;font:650 clamp(38px,12vw,52px)/1 inherit;
+  letter-spacing:-.03em;padding:6px 0 0;font-variant-numeric:tabular-nums}
 .amount small{font-size:18px;font-weight:500;color:var(--muted);margin-right:8px;letter-spacing:0}
 .amount.zero{color:var(--muted)}
-.step{text-align:center;color:var(--ink2);font-size:14px;margin-bottom:auto;padding-bottom:12px;min-height:20px}
-.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.step{text-align:center;color:var(--ink2);font-size:12.5px;margin-bottom:auto;padding-bottom:2px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .pad button{background:var(--key);border:1px solid var(--edge);border-radius:14px;
-  font:500 26px/1 inherit;color:var(--ink);padding:16px 0;cursor:pointer;
+  font:500 24px/1 inherit;color:var(--ink);padding:10px 0;cursor:pointer;
   font-variant-numeric:tabular-nums;transition:transform .06s,background .12s}
 .pad button:active{transform:scale(.95);background:var(--sunk)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:auto}
@@ -98,8 +104,8 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .grid button i{font-style:normal;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .grid button.over i{color:var(--over)}
 .grid button.close i{color:var(--close)}
-.go{width:100%;padding:16px;border:0;border-radius:14px;background:var(--me);color:#fff;
-  font:650 17px/1 inherit;cursor:pointer;margin-top:12px}
+.go{width:100%;padding:11px;border:0;border-radius:14px;background:var(--me);color:#fff;
+  font:650 17px/1 inherit;cursor:pointer;margin-top:7px}
 .go:disabled{background:var(--sunk);color:var(--muted)}
 .back{width:100%;padding:12px;border:1px solid var(--edge);border-radius:14px;background:transparent;
   color:var(--ink2);font:500 15px/1 inherit;cursor:pointer;margin-top:9px}
@@ -188,9 +194,18 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
         <button data-d="pick">Another day</button>
         <input type="date" id="datePick" hidden>
       </div>
+      <div class="months" id="monthsPick">
+        <span class="lbl">Split</span>
+        <button data-n="1" class="on">1</button>
+        <button data-n="2">2</button>
+        <button data-n="3">3</button>
+        <button data-n="4">4</button>
+        <button data-n="6">6</button>
+        <button data-n="12">12</button>
+      </div>
       <div class="crumb"><span class="now">Amount</span><span>Category</span><span>Segment</span></div>
       <div class="amount zero" id="amountView"><small>AED</small>0</div>
-      <div class="step" id="amountHint">How much?</div>
+      <div class="step" id="splitHint"></div>
       <div class="pad">
         <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
         <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
