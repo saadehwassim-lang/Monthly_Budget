@@ -55,7 +55,7 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .muted{color:var(--muted)} .tnum{font-variant-numeric:tabular-nums}
 
 /* entry */
-#add{display:flex;flex-direction:column;min-height:calc(100dvh - 112px)}
+#add{display:flex;flex-direction:column}
 #add > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
 #stepAmount,#stepCat,#stepSeg{flex:1}
 .who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:7px}
@@ -78,17 +78,17 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .crumb{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px}
 .crumb span{background:var(--sunk);padding:5px 10px;border-radius:99px;color:var(--ink2)}
 .crumb span.now{background:var(--me);color:#fff}
-.amount{margin-top:auto;text-align:center;font:650 clamp(38px,12vw,52px)/1 inherit;
+.amount{margin-top:clamp(8px,4vh,28px);text-align:center;font:650 clamp(38px,12vw,52px)/1 inherit;
   letter-spacing:-.03em;padding:6px 0 0;font-variant-numeric:tabular-nums}
 .amount small{font-size:18px;font-weight:500;color:var(--muted);margin-right:8px;letter-spacing:0}
 .amount.zero{color:var(--muted)}
-.step{text-align:center;color:var(--ink2);font-size:12.5px;margin-bottom:auto;padding-bottom:2px}
+.step{text-align:center;color:var(--ink2);font-size:12.5px;padding-bottom:2px}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .pad button{background:var(--key);border:1px solid var(--edge);border-radius:14px;
   font:500 24px/1 inherit;color:var(--ink);padding:10px 0;cursor:pointer;
   font-variant-numeric:tabular-nums;transition:transform .06s,background .12s}
 .pad button:active{transform:scale(.95);background:var(--sunk)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:clamp(8px,3vh,24px)}
 .grid button{background:var(--key);border:1px solid var(--edge);border-radius:14px;
   padding:14px 10px;font:500 14.5px/1.25 inherit;color:var(--ink);cursor:pointer;
   min-height:60px;transition:transform .06s,border-color .12s;
