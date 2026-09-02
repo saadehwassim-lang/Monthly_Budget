@@ -242,7 +242,15 @@ function paintSegs(){
     g.appendChild(b);
   });
 }
+let saving=false;
+/* A fast double-tap on the segment button — easy to do on a touchscreen, and
+   nothing here disabled it — used to fire save() twice and log the same
+   transaction twice. This flag makes the second tap a no-op instead. */
 async function save(){
+  if(saving) return; saving=true;
+  try{ await doSave(); } finally{ saving=false; }
+}
+async function doSave(){
   const amt=parseFloat(amount), c=DATA.categories[catIdx], seg=c.segments[segIdx];
   const bud=c.budgets[segIdx]||0;
   const n=splitMonths, parts=splitAmount(amt,n);
@@ -416,7 +424,17 @@ function paintTrack(){
 }
 
 /* ── wiring ──────────────────────────────────────────────────────────────── */
+/* iOS in particular will silently reload a backgrounded home-screen app — lock
+   the phone on the Budget tab, come back, and without this the page boots
+   fresh and always lands back on Add. That "did my save even go through?"
+   moment is exactly what leads to logging the same thing twice, so the tab you
+   were actually on survives a reload the same way the sheet URL does. */
+function lastTab(){
+  const t = (()=>{ try{ return localStorage.getItem("bud.tab"); }catch{ return null; } })();
+  return t==="track" ? "track" : "add";
+}
 function showTab(n){
+  try{ localStorage.setItem("bud.tab", n); }catch{}
   ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
@@ -505,11 +523,11 @@ async function boot(){
   if(!cfg.token||!cfg.url){ prefillSetup(); $("#setup").classList.remove("hide"); return; }
   $("#setup").classList.add("hide"); $("#tabs").classList.remove("hide");
   const cached=loadCache();
-  if(cached){ showTab("add"); paintAmount(); paintQueue(); }
+  if(cached){ showTab(lastTab()); paintAmount(); paintQueue(); }
   try{ await loadData(); }
   catch(e){ if(!cached){ prefillSetup(); $("#setup").classList.remove("hide");
     $("#setupMsg").textContent=e.message; return; } }
-  showTab("add"); paintAmount(); paintQueue(); flushQueue();
+  showTab(lastTab()); paintAmount(); paintQueue(); flushQueue();
 }
 /* ── keeping two devices in step ──────────────────────────────────────────
    There is one copy of the data — the sheet. Everything here is a view of it,

@@ -70,7 +70,7 @@ demoApp = must(demoApp,
   "");
 demoApp = must(demoApp, `  if(!cfg.token||!cfg.url){ prefillSetup(); $("#setup").classList.remove("hide"); return; }`,
                         `  cfg={url:"demo",token:"demo"};`);
-demoApp = must(demoApp, `  showTab("add"); paintAmount(); paintQueue(); flushQueue();`,
+demoApp = must(demoApp, `  showTab(lastTab()); paintAmount(); paintQueue(); flushQueue();`,
                         `  showTab("track"); paintAmount();`);
 /* The demo is one self-contained page with no service worker beside it. */
 demoApp = must(demoApp, /if\("serviceWorker" in navigator\)[\s\S]*?\.catch\(\(\)=>\{\}\);/, "");
