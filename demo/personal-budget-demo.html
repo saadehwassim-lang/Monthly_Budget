@@ -701,10 +701,17 @@ function lastTab(){
 }
 function showTab(n){
   try{ localStorage.setItem("bud.tab", n); }catch{}
+  /* Leaving a half-typed amount sitting there is exactly what causes
+     duplicates: check the Budget tab mid-entry, come back, find the same
+     number still showing, and — with no way to tell "still typing" from
+     "already saved" apart — log it again for real. Checking Budget always
+     abandons whatever wasn't finished yet, so Add is never ambiguous: it's
+     either a fresh 0, or nothing was lost because it was already saved. */
+  if(n==="track"){ amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1; }
   ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
-  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); }
+  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); paintAmount(); }
   $(".wrap").scrollTop=0;
 }
 document.querySelectorAll(".pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
