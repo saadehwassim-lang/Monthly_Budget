@@ -334,13 +334,26 @@ async function doSave(){
   paintAmount(); paintWhen(); paintMonths();
 }
 
-/* ── budget view ─────────────────────────────────────────────────────────── */
+/* Which category segment-lists are expanded, by category name — closed by
+   default, and remembered across repaints (a new save, a month switch,
+   Refresh) so opening one doesn't get silently undone by the next repaint. */
+const openCats = new Set();
 function meter(name, spent, budget, subs, my){
   const st = statusOf(spent,budget,my), e = elapsed(my);
+  const shown = (subs||[]).filter(s=>s.spent>0||s.budget>0).sort((a,b)=>b.spent-a.spent);
   const box = el("div","meter");
   const top = el("div","top");
-  top.append(el("div","nm",name),
-             el("div","amt", budget ? `${money(spent)} / ${money(budget)}` : money(spent)));
+  const right = el("div","topRight");
+  right.appendChild(el("div","amt", budget ? `${money(spent)} / ${money(budget)}` : money(spent)));
+  let toggle = null;
+  if(shown.length){
+    toggle = el("button","segToggle");
+    toggle.type = "button";
+    toggle.setAttribute("aria-label", `Show ${name} segments`);
+    toggle.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+    right.appendChild(toggle);
+  }
+  top.append(el("div","nm",name), right);
   box.appendChild(top);
 
   const bar=el("div","bar");
@@ -362,9 +375,20 @@ function meter(name, spent, budget, subs, my){
   }
   box.appendChild(note);
 
-  if(subs?.length){
+  if(shown.length){
     const wrap=el("div","subs");
-    subs.filter(s=>s.spent>0||s.budget>0).sort((a,b)=>b.spent-a.spent).forEach(s=>{
+    const open = openCats.has(name);
+    wrap.classList.toggle("hide", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.onclick = () => {
+      const nowOpen = !openCats.has(name);
+      if(nowOpen) openCats.add(name); else openCats.delete(name);
+      wrap.classList.toggle("hide", !nowOpen);
+      toggle.classList.toggle("open", nowOpen);
+      toggle.setAttribute("aria-expanded", String(nowOpen));
+    };
+    shown.forEach(s=>{
       const ss=statusOf(s.spent,s.budget,my);
       const row=el("div","sub");
       row.appendChild(el("span",null,s.name));
@@ -375,7 +399,7 @@ function meter(name, spent, budget, subs, my){
       row.appendChild(el("b",null, s.budget?`${Math.round(s.spent)}/${Math.round(s.budget)}`:`${Math.round(s.spent)}`));
       wrap.appendChild(row);
     });
-    if(wrap.children.length) box.appendChild(wrap);
+    box.appendChild(wrap);
   }
   return box;
 }

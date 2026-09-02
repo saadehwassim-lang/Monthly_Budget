@@ -127,11 +127,17 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .meter{padding:13px 0;border-top:1px solid var(--line)}
 .meter:first-child{border-top:0;padding-top:2px}
 .meter .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.meter .topRight{display:flex;align-items:center;gap:6px}
 .meter .nm{font-weight:600;font-size:15px}
 .meter .amt{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .meter .note{font-size:12.5px;color:var(--ink2);display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .pill{font:600 10.5px/1 inherit;letter-spacing:.04em;text-transform:uppercase;
   padding:4px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.segToggle{border:0;background:none;color:var(--muted);padding:2px;margin:-2px;
+  cursor:pointer;display:flex;transition:transform .15s ease}
+.segToggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+.segToggle.open{transform:rotate(180deg)}
 .subs{margin:9px 0 0;padding-left:2px}
 .sub{display:grid;grid-template-columns:1fr 76px 78px;align-items:center;gap:10px;
   padding:6px 0;font-size:13.5px;color:var(--ink2)}
@@ -616,13 +622,26 @@ async function doSave(){
   paintAmount(); paintWhen(); paintMonths();
 }
 
-/* ── budget view ─────────────────────────────────────────────────────────── */
+/* Which category segment-lists are expanded, by category name — closed by
+   default, and remembered across repaints (a new save, a month switch,
+   Refresh) so opening one doesn't get silently undone by the next repaint. */
+const openCats = new Set();
 function meter(name, spent, budget, subs, my){
   const st = statusOf(spent,budget,my), e = elapsed(my);
+  const shown = (subs||[]).filter(s=>s.spent>0||s.budget>0).sort((a,b)=>b.spent-a.spent);
   const box = el("div","meter");
   const top = el("div","top");
-  top.append(el("div","nm",name),
-             el("div","amt", budget ? `${money(spent)} / ${money(budget)}` : money(spent)));
+  const right = el("div","topRight");
+  right.appendChild(el("div","amt", budget ? `${money(spent)} / ${money(budget)}` : money(spent)));
+  let toggle = null;
+  if(shown.length){
+    toggle = el("button","segToggle");
+    toggle.type = "button";
+    toggle.setAttribute("aria-label", `Show ${name} segments`);
+    toggle.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+    right.appendChild(toggle);
+  }
+  top.append(el("div","nm",name), right);
   box.appendChild(top);
 
   const bar=el("div","bar");
@@ -644,9 +663,20 @@ function meter(name, spent, budget, subs, my){
   }
   box.appendChild(note);
 
-  if(subs?.length){
+  if(shown.length){
     const wrap=el("div","subs");
-    subs.filter(s=>s.spent>0||s.budget>0).sort((a,b)=>b.spent-a.spent).forEach(s=>{
+    const open = openCats.has(name);
+    wrap.classList.toggle("hide", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.onclick = () => {
+      const nowOpen = !openCats.has(name);
+      if(nowOpen) openCats.add(name); else openCats.delete(name);
+      wrap.classList.toggle("hide", !nowOpen);
+      toggle.classList.toggle("open", nowOpen);
+      toggle.setAttribute("aria-expanded", String(nowOpen));
+    };
+    shown.forEach(s=>{
       const ss=statusOf(s.spent,s.budget,my);
       const row=el("div","sub");
       row.appendChild(el("span",null,s.name));
@@ -657,7 +687,7 @@ function meter(name, spent, budget, subs, my){
       row.appendChild(el("b",null, s.budget?`${Math.round(s.spent)}/${Math.round(s.budget)}`:`${Math.round(s.spent)}`));
       wrap.appendChild(row);
     });
-    if(wrap.children.length) box.appendChild(wrap);
+    box.appendChild(wrap);
   }
   return box;
 }
