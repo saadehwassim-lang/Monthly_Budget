@@ -11,7 +11,17 @@ const store = {
   set(v){ try{ localStorage.setItem("bud.cfg", JSON.stringify(v)); }catch{} },
   queue(){ try{ return JSON.parse(localStorage.getItem("bud.queue")||"[]"); }catch{ return []; } },
   setQueue(q){ try{ localStorage.setItem("bud.queue", JSON.stringify(q)); }catch{} },
+  /* Entries the sheet has actively refused — never silently retried, since
+     retrying the same payload would just fail the same way forever. Kept
+     separately so the data isn't lost, only stopped from looping. */
+  rejected(){ try{ return JSON.parse(localStorage.getItem("bud.rejected")||"[]"); }catch{ return []; } },
+  setRejected(q){ try{ localStorage.setItem("bud.rejected", JSON.stringify(q)); }catch{} },
 };
+/* Thrown only when the sheet was never actually reached — offline, DNS,
+   timeout, a malformed reply. Worth queueing and retrying later. A response
+   that DID arrive and said {ok:false} (bad amount, bad token, a script error)
+   is a real Error instead: retrying that exact payload will never succeed. */
+class TransportError extends Error {}
 /* This is a personal, single-sheet project — always the same Apps Script, so the
    app connects itself on open instead of asking. A device that already saved a
    different config (testing against another sheet, say) keeps using that; this
@@ -39,12 +49,15 @@ async function api(opts) {
   const url = opts.method === "POST"
     ? base
     : `${base}?token=${encodeURIComponent(cfg.token)}&months=4`;
-  const r = await fetch(url, opts.method === "POST"
-    ? { method:"POST", headers:{ "content-type":"text/plain;charset=utf-8" },
-        body: JSON.stringify({ token: cfg.token, ...opts.body }), redirect:"follow" }
-    : { method:"GET", redirect:"follow" });
-  if (!r.ok) throw new Error(`The sheet replied ${r.status}`);
-  const j = await r.json().catch(() => { throw new Error("Could not read the reply — check the Apps Script URL ends in /exec"); });
+  let r;
+  try {
+    r = await fetch(url, opts.method === "POST"
+      ? { method:"POST", headers:{ "content-type":"text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: cfg.token, ...opts.body }), redirect:"follow" }
+      : { method:"GET", redirect:"follow" });
+  } catch(e) { throw new TransportError(e.message || "Could not reach the sheet"); }
+  if (!r.ok) throw new TransportError(`The sheet replied ${r.status}`);
+  const j = await r.json().catch(() => { throw new TransportError("Could not read the reply — check the Apps Script URL ends in /exec"); });
   if (j.ok === false) throw new Error(j.error || "Refused");
   return j;
 }
@@ -67,27 +80,50 @@ function loadCache(){
 async function send(t){
   try { const r = await api({ method:"POST", body:t }); return { ok:true, row:r.row }; }
   catch(e){
-    const key = "local-" + Date.now() + "-" + Math.random().toString(36).slice(2,7);
-    const q = store.queue();
-    q.push({ ...t, at: t.at || new Date().toISOString(), __key: key });
-    store.setQueue(q);
-    return { ok:false, error:e.message, localKey:key };
+    if(e instanceof TransportError){
+      // never actually reached the sheet — worth keeping and retrying
+      const key = "local-" + Date.now() + "-" + Math.random().toString(36).slice(2,7);
+      const q = store.queue();
+      q.push({ ...t, at: t.at || new Date().toISOString(), __key: key });
+      store.setQueue(q);
+      return { ok:false, error:e.message, localKey:key, transport:true };
+    }
+    // the sheet answered and refused it — the confirmation screen shows this
+    // error right now, so there is nothing useful to queue and retry later
+    return { ok:false, error:e.message, transport:false };
   }
 }
 async function flushQueue(){
   const q = store.queue(); if(!q.length) return;
-  const left=[]; let sent=0;
+  const left=[]; const rejected=store.rejected(); let sent=0, newlyRejected=0;
   for(const t of q){
     const { __key, ...payload } = t;
-    try{ await api({ method:"POST", body:payload }); sent++; } catch { left.push(t); }
+    try{ await api({ method:"POST", body:payload }); sent++; }
+    catch(e){
+      if(e instanceof TransportError) left.push(t);
+      else { rejected.push({ ...payload, error:e.message }); newlyRejected++; }
+    }
   }
-  store.setQueue(left); paintQueue();
+  store.setQueue(left);
+  if(newlyRejected) store.setRejected(rejected);
+  paintOutbox();
   if(sent){ try{ await loadData(); }catch{} if(!$("#track").classList.contains("hide")) paintTrack(); }
 }
-function paintQueue(){
+function paintOutbox(){
   const n = store.queue().length;
   $("#queueBanner").classList.toggle("hide", n===0);
   if(n) $("#queueText").textContent = `${n} waiting to reach the sheet`;
+
+  const rej = store.rejected();
+  $("#rejectedBanner").classList.toggle("hide", !rej.length);
+  if(rej.length){
+    $("#rejectedText").textContent = rej.length===1
+      ? `1 entry was rejected: ${rej[0].error}`
+      : `${rej.length} entries were rejected by the sheet`;
+  } else {
+    $("#rejectedList").classList.add("hide");
+    $("#rejectedDetails").textContent = "Details";
+  }
 }
 
 /** Remove one entry, by the key the sheet gave it when it was saved. */
@@ -96,7 +132,7 @@ async function removeEntry(key){
   // Still sitting in the outbox? Then it never reached the sheet — drop it here.
   const q = store.queue();
   const i = q.findIndex(t => t.__key === key);
-  if(i >= 0){ q.splice(i,1); store.setQueue(q); paintQueue();
+  if(i >= 0){ q.splice(i,1); store.setQueue(q); paintOutbox();
     DATA.rows = DATA.rows.filter(r => r.key !== key);
     return { ok:true, local:true }; }
   try {
@@ -303,20 +339,21 @@ async function doSave(){
   // Entry 0 keeps today/yesterday/pick exactly as a single save always has — the
   // server's own clock still wins when nothing was backdated. Every later month
   // is unambiguously in the future, so it has to carry an explicit date.
-  const keys=[]; let failed=false, lastErr="";
+  const keys=[]; let anyQueued=false, anyRejected=false, lastErr="";
   for(let i=0;i<n;i++){
     const iso = i===0 ? baseIso : addMonthsClamped(baseIso,i);
     const at  = i===0 ? spentAtISO() : `${iso}T12:00:00+04:00`;
     const res = await send({ amount:parts[i], who, category:c.name, segment:seg, ...(at?{at}:{}) });
     if(res.ok){ DATA.rows.unshift({ ...res.row }); keys.push(res.row.key); }
-    else { failed=true; lastErr=res.error; if(res.localKey) keys.push(res.localKey); }
+    else if(res.transport){ anyQueued=true; lastErr=res.error; keys.push(res.localKey); }
+    else { anyRejected=true; lastErr=res.error; }               // the sheet actually said no
   }
   try{ localStorage.setItem("bud.cache", JSON.stringify(DATA)); }catch{}
   lastSavedKeys = keys;
   $("#undoLast").classList.toggle("hide", !keys.length);
   $("#undoLast").textContent = undoLabel(keys.length);
 
-  if(!failed){
+  if(!anyQueued && !anyRejected){
     const sp = spentBy()[`${c.name}|${seg}`]||0;
     if(bud){
       const st = statusOf(sp,bud);
@@ -324,12 +361,19 @@ async function doSave(){
         `${seg}: ${money(sp)} of ${money(bud)} this month · ${money(Math.max(bud-sp,0))} left`;
       $("#savedBudget").style.color = st.col;
     }
+  } else if(anyRejected){
+    // Retrying this later would fail the exact same way, so say so plainly
+    // now rather than pretending it is merely "waiting" for a connection.
+    $("#savedBudget").textContent = n>1
+      ? `The sheet refused part of this split: ${lastErr}`
+      : `The sheet refused this entry: ${lastErr}`;
+    $("#savedBudget").style.color = "var(--over)";
   } else {
     $("#savedBudget").textContent = n>1
-      ? `Some months saved on this phone — they'll reach the sheet when you're back online. (${lastErr})`
+      ? "Some months saved on this phone — they'll reach the sheet when you're back online."
       : "Saved on this phone — it will reach the sheet when you're back online.";
-    paintQueue();
   }
+  if(anyQueued || anyRejected) paintOutbox();
   amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1;
   paintAmount(); paintWhen(); paintMonths();
 }
@@ -588,6 +632,20 @@ $("#undoLast").onclick   = async ()=>{
   b.textContent=undoLabel(remaining.length); b.disabled=false;
 };
 $("#retryQueue").onclick = ()=> flushQueue();
+$("#rejectedDetails").onclick = () => {
+  const box = $("#rejectedList");
+  const nowOpen = box.classList.toggle("hide") === false;
+  $("#rejectedDetails").textContent = nowOpen ? "Hide" : "Details";
+  if(nowOpen){
+    box.innerHTML = store.rejected().map(r =>
+      `${money2(r.amount)} · ${r.category} › ${r.segment} · ${r.who} — ${r.error}`
+    ).join("<br>");
+  }
+};
+$("#rejectedDiscard").onclick = () => {
+  store.setRejected([]);
+  paintOutbox();
+};
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $("#refresh").onclick = async ()=>{
   $("#refresh").textContent="…";
@@ -620,11 +678,11 @@ async function boot(){
   if(!cfg.token||!cfg.url){ prefillSetup(); $("#setup").classList.remove("hide"); return; }
   $("#setup").classList.add("hide"); $("#tabs").classList.remove("hide");
   const cached=loadCache();
-  if(cached){ showTab(lastTab()); paintAmount(); paintQueue(); }
+  if(cached){ showTab(lastTab()); paintAmount(); paintOutbox(); }
   try{ await loadData(); }
   catch(e){ if(!cached){ prefillSetup(); $("#setup").classList.remove("hide");
     $("#setupMsg").textContent=e.message; return; } }
-  showTab(lastTab()); paintAmount(); paintQueue(); flushQueue();
+  showTab(lastTab()); paintAmount(); paintOutbox(); flushQueue();
 }
 /* ── keeping two devices in step ──────────────────────────────────────────
    There is one copy of the data — the sheet. Everything here is a view of it,

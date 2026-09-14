@@ -176,6 +176,8 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
   display:flex;gap:9px;align-items:center;justify-content:space-between;
   background:color-mix(in srgb,var(--close) 15%,transparent);color:var(--close)}
 .banner button{border:0;background:none;color:inherit;font:600 13px/1 inherit;text-decoration:underline;cursor:pointer}
+.banner.over{background:color-mix(in srgb,var(--over) 15%,transparent);color:var(--over)}
+.banner .btns{display:flex;gap:14px;flex:none}
 input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-radius:12px;
   background:var(--key);color:var(--ink);font:15px/1 inherit}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -199,6 +201,11 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
   <section id="add" class="hide">
     <div id="queueBanner" class="banner hide">
       <span id="queueText"></span><button id="retryQueue">Retry</button></div>
+    <div id="rejectedBanner" class="banner over hide">
+      <span id="rejectedText"></span>
+      <div class="btns"><button id="rejectedDetails">Details</button><button id="rejectedDiscard">Discard</button></div>
+    </div>
+    <div id="rejectedList" class="hide" style="font-size:12.5px;color:var(--over);margin:-6px 0 12px;line-height:1.6"></div>
 
     <div class="card" id="stepAmount">
       <div class="who" id="whoPick"></div>
