@@ -73,7 +73,20 @@ function doPost(e) {
     const lock = LockService.getScriptLock();
     lock.waitLock(15000);
     try {
-      SpreadsheetApp.getActive().getSheetByName(TX_SHEET).appendRow(row);
+      const sh = SpreadsheetApp.getActive().getSheetByName(TX_SHEET);
+      const newRow = sh.getLastRow() + 1;
+      // Date and Time (B:C) have to stay plain text. Sheets auto-detects a
+      // string that merely LOOKS like a date or time — "14:23", "2026-09-14"
+      // — and silently converts it into a real date/time serial the moment
+      // it lands in the cell. Read back later, that serial gets reconstructed
+      // as a Date object through whichever timezone Apps Script defaults to
+      // at that boundary, which is not necessarily Asia/Dubai — and that
+      // mismatch is exactly what turns a 14:23 save into a displayed 02:23.
+      // Formatting the cells as text *before* the value is written is the
+      // only point this can be stopped at; reformatting afterwards would
+      // just redisplay an already-corrupted serial.
+      sh.getRange(newRow, 2, 1, 2).setNumberFormat('@');
+      sh.getRange(newRow, 1, 1, row.length).setValues([row]);
     } finally {
       lock.releaseLock();
     }
