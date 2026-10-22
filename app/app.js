@@ -199,6 +199,18 @@ let amount="", catIdx=null, segIdx=null, lastSavedKeys=[];
 let splitMonths=1;                               // 1 = log it as one transaction, as before
 const undoLabel = n => n>1 ? `Undo — remove all ${n} entries` : "Undo — remove that entry";
 
+/* ── vacation entry ──────────────────────────────────────────────────────────
+   A trip runs in a different currency but still lands in the one sheet, under
+   Travel — so this is its own small flow (own amount, own date, own currency)
+   that converts to AED and then calls the same send() the main flow uses,
+   rather than routing through doSave() and its category/segment steps. */
+const FX = { USD: 3.6725, EUR: 4.12 };  // USD is the real, fixed UAE peg — this
+                                          // one never needs updating. EUR floats;
+                                          // edit this if the rate drifts before a trip.
+const VAC_DESTS = ["Lebanon Travel", "Vacation Travel"];
+let vacAmount="", vacCurrency="USD", vacSpentOn=null, vacSaving=false, vacLastKey=null;
+const money2cur = (n,cur) => `${cur} ${(Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
 /* Which day the money was actually spent. Defaults to today, because that is the
    answer nine times in ten — but a purchase logged the next morning belongs to the
    day it happened, and at a month boundary that is the difference between the
@@ -279,11 +291,104 @@ function key(k){
     amount=(amount==="0"?"":amount)+k; }
   paintAmount();
 }
-function paintWho(){
-  const w=$("#whoPick"); w.innerHTML="";
+function vacKey(k){
+  if(k==="del") vacAmount=vacAmount.slice(0,-1);
+  else if(k==="."){ if(!vacAmount.includes(".")) vacAmount=(vacAmount||"0")+"."; }
+  else { const [,dec]=vacAmount.split(".");
+    if(dec!==undefined && dec.length>=2) return;
+    if(vacAmount.replace(".","").length>=9) return;
+    vacAmount=(vacAmount==="0"?"":vacAmount)+k; }
+  paintVacAmount();
+}
+function paintVacAmount(){
+  const v=$("#vacAmountView");
+  v.innerHTML = `<small>${vacCurrency}</small>${vacAmount||"0"}`;
+  v.classList.toggle("zero", !vacAmount);
+  const amt = parseFloat(vacAmount);
+  $("#vacRateHint").textContent = amt>0
+    ? `≈ ${money2(Math.round(amt*FX[vacCurrency]*100)/100)} · 1 ${vacCurrency} = ${FX[vacCurrency]} AED` : "";
+}
+function paintVacWhen(){
+  const today = isoDay(new Date());
+  $("#vacDatePick").max = today;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yest = isoDay(y);
+  const sel = vacSpentOn ?? today;
+  document.querySelectorAll("#vacWhenPick button").forEach(b=>{
+    const on = (b.dataset.d==="0" && sel===today) ||
+               (b.dataset.d==="1" && sel===yest) ||
+               (b.dataset.d==="pick" && sel!==today && sel!==yest);
+    b.classList.toggle("on", on);
+    if(b.dataset.d==="pick") b.textContent = on ? dayLabel(sel) : "Another day";
+  });
+}
+/* The two destination buttons double as a mini category/segment picker — same
+   "N of budget" status the main Category/Segment steps show, scoped to
+   Travel's two trip segments, always against the real current month (not
+   whatever month Budget happens to be browsing). */
+function paintVacDest(){
+  const travel = DATA.categories.find(c=>c.name==="Travel");
+  const spent = spentBy(), g=$("#vacDestGrid"); g.innerHTML="";
+  VAC_DESTS.forEach(name=>{
+    const i = travel ? travel.segments.indexOf(name) : -1;
+    const bud = (travel && i>=0) ? travel.budgets[i]||0 : 0;
+    const sp = spent[`Travel|${name}`]||0;
+    const st = statusOf(sp,bud);
+    const b=el("button", st.k==="over"?"over":st.k==="close"?"close":null);
+    b.append(el("span",null,name),
+             el("i",null, bud ? `${Math.round(sp)} of ${Math.round(bud)}` : "no budget"));
+    b.onclick=()=>vacSave(name);
+    g.appendChild(b);
+  });
+}
+async function vacSave(dest){
+  if(vacSaving) return; vacSaving=true;
+  try{
+    const amt=parseFloat(vacAmount);
+    if(!(amt>0)) return;
+    const travel = DATA.categories.find(c=>c.name==="Travel");
+    const segOk = travel && travel.segments.includes(dest);
+    if(!segOk){
+      $("#vacError").textContent = `Couldn't find "${dest}" under Travel in your sheet.`;
+      return;
+    }
+    $("#vacError").textContent = "";
+    const rate = FX[vacCurrency];
+    const aed = Math.round(amt*rate*100)/100;
+    const note = `${vacCurrency} ${amt.toFixed(2)} × ${rate} = ${money2(aed)}`;
+    const at = vacSpentOn ? `${vacSpentOn}T12:00:00+04:00` : null;
+
+    $("#vacSavedAmt").textContent = `${money2cur(amt,vacCurrency)} → ${money2(aed)}`;
+    $("#vacSavedCat").textContent = `Travel › ${dest} · ${who}`
+      + (vacSpentOn ? ` · ${dayLabel(vacSpentOn)}` : "");
+    $("#vacStepEntry").classList.add("hide");
+    $("#vacStepSaved").classList.remove("hide");
+
+    const res = await send({ amount:aed, who, category:"Travel", segment:dest, note, ...(at?{at}:{}) });
+    vacLastKey = res.ok ? res.row.key : (res.transport ? res.localKey : null);
+    $("#vacUndoLast").classList.toggle("hide", !vacLastKey);
+    if(res.ok){
+      DATA.rows.unshift({ ...res.row });
+      try{ localStorage.setItem("bud.cache", JSON.stringify(DATA)); }catch{}
+    } else if(res.transport){
+      paintOutbox();
+    } else {
+      // the sheet actively refused it — say so plainly, same reasoning as the
+      // main flow: retrying the identical payload would just fail again
+      $("#vacSavedCat").textContent += ` — refused: ${res.error}`;
+    }
+    vacAmount=""; vacSpentOn=null;
+    paintVacAmount(); paintVacWhen();
+  } finally { vacSaving=false; }
+}
+/* "who" is one app-wide notion of who's spending — the Add tab and the
+   Vacation tab each show their own picker, but both read and write the same
+   state, so picking Jamela in one keeps her picked in the other. */
+function paintWho(id){
+  const w=$("#"+id); if(!w) return; w.innerHTML="";
   DATA.people.forEach(p=>{
     const b=el("button",p===who?"on":null,p);
-    b.onclick=()=>{ who=p; cfg={...cfg,who}; store.set(cfg); paintWho(); };
+    b.onclick=()=>{ who=p; cfg={...cfg,who}; store.set(cfg); paintWho("whoPick"); paintWho("vacWhoPick"); };
     w.appendChild(b);
   });
 }
@@ -553,7 +658,7 @@ function paintTrack(){
    were actually on survives a reload the same way the sheet URL does. */
 function lastTab(){
   const t = (()=>{ try{ return localStorage.getItem("bud.tab"); }catch{ return null; } })();
-  return t==="track" ? "track" : "add";
+  return (t==="track"||t==="vacation") ? t : "add";
 }
 function showTab(n){
   try{ localStorage.setItem("bud.tab", n); }catch{}
@@ -566,11 +671,15 @@ function showTab(n){
   if(n==="track"){ amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1; }
   /* A month you jumped to from a backdated entry is a one-trip thing — the
      next time you open Budget on its own, it should be this month again. */
-  if(n==="add"){ viewedMonth=null; }
-  ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
+  if(n==="add"||n==="vacation"){ viewedMonth=null; }
+  ["add","track","vacation"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
-  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); paintAmount(); }
+  if(n==="add"){ showStep("stepAmount"); paintWho("whoPick"); paintWhen(); paintMonths(); paintAmount(); }
+  if(n==="vacation"){
+    $("#vacStepSaved").classList.add("hide"); $("#vacStepEntry").classList.remove("hide");
+    paintWho("vacWhoPick"); paintVacWhen(); paintVacAmount(); paintVacDest();
+  }
   $(".wrap").scrollTop=0;
 }
 function shiftMonth(delta){
@@ -582,7 +691,7 @@ function shiftMonth(delta){
 $("#prevMonth").onclick   = ()=> shiftMonth(-1);
 $("#nextMonth").onclick   = ()=> shiftMonth(1);
 $("#backToToday").onclick = ev => { ev.preventDefault(); viewedMonth=null; paintTrack(); };
-document.querySelectorAll(".pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
+document.querySelectorAll("#stepAmount .pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
 document.querySelectorAll("#whenPick button").forEach(b=>b.onclick=()=>{
   if(b.dataset.d==="pick"){
     const inp=$("#datePick");
@@ -598,6 +707,47 @@ document.querySelectorAll("#monthsPick button").forEach(b=>b.onclick=()=>{
   splitMonths = Number(b.dataset.n);
   paintMonths(); paintAmount();
 });
+document.querySelectorAll("#vacStepEntry .pad button").forEach(b=>b.onclick=()=>vacKey(b.dataset.k));
+document.querySelectorAll("#vacCurrencyPick button").forEach(b=>b.onclick=()=>{
+  vacCurrency = b.dataset.c;
+  document.querySelectorAll("#vacCurrencyPick button").forEach(x=>x.classList.toggle("on", x===b));
+  paintVacAmount();
+});
+document.querySelectorAll("#vacWhenPick button").forEach(b=>b.onclick=()=>{
+  if(b.dataset.d==="pick"){
+    const inp=$("#vacDatePick");
+    inp.value = vacSpentOn ?? isoDay(new Date());
+    inp.hidden = false; inp.showPicker ? inp.showPicker() : inp.click();
+    return;
+  }
+  const d=new Date(); d.setDate(d.getDate()-Number(b.dataset.d));
+  vacSpentOn = Number(b.dataset.d)===0 ? null : isoDay(d);
+  paintVacWhen();
+});
+$("#vacDatePick").onchange = e => {
+  const v=e.target.value; e.target.hidden=true;
+  if(!v) return;
+  vacSpentOn = (v === isoDay(new Date())) ? null : v;
+  paintVacWhen();
+};
+$("#vacAddAnother").onclick = ()=>{
+  paintWho("vacWhoPick"); paintVacDest();
+  $("#vacStepSaved").classList.add("hide"); $("#vacStepEntry").classList.remove("hide");
+};
+$("#vacUndoLast").onclick = async ()=>{
+  const b=$("#vacUndoLast");
+  b.textContent="Removing…"; b.disabled=true;
+  const res = await removeEntry(vacLastKey);
+  if(res.ok){
+    vacLastKey=null;
+    $("#vacSavedAmt").textContent="Removed";
+    $("#vacSavedCat").textContent="That entry is gone from the sheet.";
+    b.classList.add("hide");
+  } else {
+    $("#vacSavedCat").textContent = res.error;
+  }
+  b.textContent="Undo — remove that entry"; b.disabled=false;
+};
 $("#datePick").onchange = e => {
   const v=e.target.value; e.target.hidden=true;
   if(!v) return;
@@ -607,7 +757,7 @@ $("#datePick").onchange = e => {
 $("#toCat").onclick      = ()=>{ paintCats(); showStep("stepCat"); };
 $("#backAmount").onclick = ()=> showStep("stepAmount");
 $("#backCat").onclick    = ()=>{ paintCats(); showStep("stepCat"); };
-$("#addAnother").onclick = ()=>{ paintWho(); showStep("stepAmount"); };
+$("#addAnother").onclick = ()=>{ paintWho("whoPick"); showStep("stepAmount"); };
 $("#seeTrack").onclick   = ()=> showTab("track");
 /* A split save can leave several rows behind at once (one per month), so Undo
    removes every key from that save, not just one — a half-undone split would
@@ -705,6 +855,7 @@ async function refreshIfStale(force) {
     if (!$("#track").classList.contains("hide")) paintTrack();
     if (!$("#stepCat").classList.contains("hide")) paintCats();
     if (!$("#stepSeg").classList.contains("hide") && catIdx !== null) paintSegs();
+    if (!$("#vacation").classList.contains("hide")) paintVacDest();
   } catch { /* offline or asleep — the cached view stays up, nothing breaks */ }
   finally { inFlight = false; }
 }

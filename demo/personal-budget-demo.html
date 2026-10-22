@@ -63,9 +63,9 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .monthLink:active{opacity:.7}
 
 /* entry */
-#add{display:flex;flex-direction:column}
-#add > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
-#stepAmount,#stepCat,#stepSeg{flex:1}
+#add,#vacation{display:flex;flex-direction:column}
+#add > .card,#vacation > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
+#stepAmount,#stepCat,#stepSeg,#vacStepEntry{flex:1}
 .who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:7px}
 .who button{flex:1;border:0;background:none;padding:6px 4px;border-radius:9px;color:var(--ink2);
   font:600 13px/1 inherit;cursor:pointer}
@@ -268,6 +268,44 @@ nav{justify-content:center;gap:min(30vw,260px)}
     </div>
   </section>
 
+  <section id="vacation" class="hide">
+    <div class="card" id="vacStepEntry">
+      <div class="who" id="vacWhoPick"></div>
+      <div class="when" id="vacWhenPick">
+        <button data-d="0" class="on">Today</button>
+        <button data-d="1">Yesterday</button>
+        <button data-d="pick">Another day</button>
+        <input type="date" id="vacDatePick" hidden>
+      </div>
+      <div class="months" id="vacCurrencyPick">
+        <span class="lbl">Currency</span>
+        <button data-c="USD" class="on">USD</button>
+        <button data-c="EUR">EUR</button>
+      </div>
+      <div class="amount zero" id="vacAmountView"><small>USD</small>0</div>
+      <div class="step" id="vacRateHint"></div>
+      <div class="pad">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button>
+      </div>
+      <h2 style="margin:14px 0 0">Goes to</h2>
+      <div class="grid" id="vacDestGrid"></div>
+      <p class="hint" id="vacError" style="color:var(--over);margin:10px 0 0"></p>
+    </div>
+
+    <div class="card hide" id="vacStepSaved">
+      <div class="saved">
+        <div class="tick"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>
+        <div class="big" id="vacSavedAmt"></div>
+        <div class="muted" id="vacSavedCat"></div>
+      </div>
+      <button class="go" id="vacAddAnother">Add another</button>
+      <button class="back hide" id="vacUndoLast">Undo — remove that entry</button>
+    </div>
+  </section>
+
   <section id="track" class="hide">
     <div class="card">
       <div class="row">
@@ -298,6 +336,7 @@ nav{justify-content:center;gap:min(30vw,260px)}
 
 <nav class="hide" id="tabs">
   <button data-tab="add" class="on"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+  <button data-tab="vacation"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></svg>Vacation</button>
   <button data-tab="track"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Budget</button>
 </nav>
 
@@ -344,7 +383,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const todayISO = () => new Date().toLocaleDateString("en-CA");
 
 /* ── api: replaced for the demo. Nothing leaves this page. ─────────────── */
-const DEMO = {"ok":true,"currency":"AED","people":["Wassim","Jamela"],"categories":[{"name":"Home Expenses","segments":["Mortgage/Rent","Phone Bills","Electricity and Water Bill","Gas Bill","Cable and Internet Bill","Cleaners","Home Supplies","Water","Laundry","Food Delivery","Subscription","Meal Plan","Other Home"],"budgets":[3465,210,500,30,326.76,145,1000,35,50,600,210,1176,0]},{"name":"Transportation","segments":["Car Loan/Rent","Fuel/Wash","Maintenance","Insurance","Salik and Parking","Repairs","Registration","License","Others Transportation"],"budgets":[1500,400,100,210,50,0,50,0,0]},{"name":"Personal","segments":["Gym","Salon","Clothing","Self Care","Outing","Outing Wassim and Jamela"],"budgets":[600,600,450,300,600,1000]},{"name":"Travel","segments":["Lebanon Ticket","Lebanon Travel","Vacation Ticket","Vacation Travel","Others Travel"],"budgets":[360,800,0,0,0]},{"name":"Investment","segments":["IBKR","Gold","Silver","Other Investment"],"budgets":[2940,920,340,0]}],"rows":[{"date":"2026-09-14","time":"18:34","who":"Wassim","amount":148.81,"category":"Investment","segment":"IBKR","key":"d18","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-13","time":"18:19","who":"Jamela","amount":28.77,"category":"Investment","segment":"Silver","key":"d17","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-12","time":"10:14","who":"Wassim","amount":135.69,"category":"Travel","segment":"Vacation Ticket","key":"d16","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-11","time":"16:09","who":"Wassim","amount":24.75,"category":"Travel","segment":"Vacation Travel","key":"d15","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-11","time":"11:00","who":"Jamela","amount":91.04,"category":"Personal","segment":"Self Care","key":"d14","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-10","time":"19:42","who":"Wassim","amount":126.63,"category":"Investment","segment":"Other Investment","key":"d13","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-10","time":"10:12","who":"Wassim","amount":115.11,"category":"Travel","segment":"Lebanon Travel","key":"d12","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-09","time":"18:33","who":"Wassim","amount":94.94,"category":"Travel","segment":"Lebanon Travel","key":"d10","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-09","time":"17:52","who":"Wassim","amount":31.38,"category":"Personal","segment":"Self Care","key":"d11","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-08","time":"14:52","who":"Jamela","amount":89.93,"category":"Transportation","segment":"Maintenance","key":"d9","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-08","time":"14:31","who":"Wassim","amount":56.76,"category":"Transportation","segment":"Car Loan/Rent","key":"d8","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-07","time":"20:56","who":"Wassim","amount":138.74,"category":"Transportation","segment":"Fuel/Wash","key":"d7","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-07","time":"20:38","who":"Jamela","amount":110.19,"category":"Travel","segment":"Vacation Travel","key":"d6","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-05","time":"19:52","who":"Jamela","amount":63.51,"category":"Personal","segment":"Gym","key":"d5","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-03","time":"11:27","who":"Jamela","amount":282.8,"category":"Transportation","segment":"Maintenance","key":"d4","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-03","time":"10:00","who":"Wassim","amount":2940,"category":"Investment","segment":"IBKR","key":"d3","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-02","time":"20:14","who":"Jamela","amount":182.96,"category":"Personal","segment":"Clothing","key":"d2","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-02","time":"15:35","who":"Jamela","amount":40.23,"category":"Transportation","segment":"Fuel/Wash","key":"d1","currency":"AED","note":"","month":"Sep","year":2026},{"date":"2026-09-01","time":"09:00","who":"Wassim","amount":3465,"category":"Home Expenses","segment":"Mortgage/Rent","key":"d0","currency":"AED","note":"","month":"Sep","year":2026}]};
+const DEMO = {"ok":true,"currency":"AED","people":["Wassim","Jamela"],"categories":[{"name":"Home Expenses","segments":["Mortgage/Rent","Phone Bills","Electricity and Water Bill","Gas Bill","Cable and Internet Bill","Cleaners","Home Supplies","Water","Laundry","Food Delivery","Subscription","Meal Plan","Other Home"],"budgets":[3465,210,500,30,326.76,145,1000,35,50,600,210,1176,0]},{"name":"Transportation","segments":["Car Loan/Rent","Fuel/Wash","Maintenance","Insurance","Salik and Parking","Repairs","Registration","License","Others Transportation"],"budgets":[1500,400,100,210,50,0,50,0,0]},{"name":"Personal","segments":["Gym","Salon","Clothing","Self Care","Outing","Outing Wassim and Jamela"],"budgets":[600,600,450,300,600,1000]},{"name":"Travel","segments":["Lebanon Ticket","Lebanon Travel","Vacation Ticket","Vacation Travel","Others Travel"],"budgets":[360,800,0,0,0]},{"name":"Investment","segments":["IBKR","Gold","Silver","Other Investment"],"budgets":[2940,920,340,0]}],"rows":[{"date":"2026-10-22","time":"20:54","who":"Jamela","amount":15.12,"category":"Transportation","segment":"Repairs","key":"d26","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-22","time":"13:38","who":"Wassim","amount":30.56,"category":"Personal","segment":"Gym","key":"d25","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-20","time":"16:52","who":"Wassim","amount":563.9,"category":"Transportation","segment":"Others Transportation","key":"d24","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-18","time":"14:56","who":"Jamela","amount":277.01,"category":"Investment","segment":"IBKR","key":"d23","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-17","time":"15:57","who":"Jamela","amount":54.85,"category":"Transportation","segment":"Others Transportation","key":"d22","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-16","time":"20:24","who":"Jamela","amount":25.93,"category":"Home Expenses","segment":"Mortgage/Rent","key":"d21","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-16","time":"10:46","who":"Wassim","amount":223.5,"category":"Transportation","segment":"License","key":"d20","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-15","time":"10:02","who":"Jamela","amount":126.72,"category":"Home Expenses","segment":"Subscription","key":"d19","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-14","time":"18:34","who":"Wassim","amount":148.81,"category":"Investment","segment":"IBKR","key":"d18","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-13","time":"18:19","who":"Jamela","amount":28.77,"category":"Investment","segment":"Silver","key":"d17","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-12","time":"10:14","who":"Wassim","amount":135.69,"category":"Travel","segment":"Vacation Ticket","key":"d16","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-11","time":"16:09","who":"Wassim","amount":24.75,"category":"Travel","segment":"Vacation Travel","key":"d15","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-11","time":"11:00","who":"Jamela","amount":91.04,"category":"Personal","segment":"Self Care","key":"d14","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-10","time":"19:42","who":"Wassim","amount":126.63,"category":"Investment","segment":"Other Investment","key":"d13","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-10","time":"10:12","who":"Wassim","amount":115.11,"category":"Travel","segment":"Lebanon Travel","key":"d12","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-09","time":"18:33","who":"Wassim","amount":94.94,"category":"Travel","segment":"Lebanon Travel","key":"d10","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-09","time":"17:52","who":"Wassim","amount":31.38,"category":"Personal","segment":"Self Care","key":"d11","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-08","time":"14:52","who":"Jamela","amount":89.93,"category":"Transportation","segment":"Maintenance","key":"d9","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-08","time":"14:31","who":"Wassim","amount":56.76,"category":"Transportation","segment":"Car Loan/Rent","key":"d8","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-07","time":"20:56","who":"Wassim","amount":138.74,"category":"Transportation","segment":"Fuel/Wash","key":"d7","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-07","time":"20:38","who":"Jamela","amount":110.19,"category":"Travel","segment":"Vacation Travel","key":"d6","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-05","time":"19:52","who":"Jamela","amount":63.51,"category":"Personal","segment":"Gym","key":"d5","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-03","time":"11:27","who":"Jamela","amount":282.8,"category":"Transportation","segment":"Maintenance","key":"d4","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-03","time":"10:00","who":"Wassim","amount":2940,"category":"Investment","segment":"IBKR","key":"d3","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-02","time":"20:14","who":"Jamela","amount":182.96,"category":"Personal","segment":"Clothing","key":"d2","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-02","time":"15:35","who":"Jamela","amount":40.23,"category":"Transportation","segment":"Fuel/Wash","key":"d1","currency":"AED","note":"","month":"Oct","year":2026},{"date":"2026-10-01","time":"09:00","who":"Wassim","amount":3465,"category":"Home Expenses","segment":"Mortgage/Rent","key":"d0","currency":"AED","note":"","month":"Oct","year":2026}]};
 async function api(opts){
   await new Promise(r=>setTimeout(r,160));
   if(opts.method!=="POST") return JSON.parse(JSON.stringify(DEMO));
@@ -491,6 +530,18 @@ let amount="", catIdx=null, segIdx=null, lastSavedKeys=[];
 let splitMonths=1;                               // 1 = log it as one transaction, as before
 const undoLabel = n => n>1 ? `Undo — remove all ${n} entries` : "Undo — remove that entry";
 
+/* ── vacation entry ──────────────────────────────────────────────────────────
+   A trip runs in a different currency but still lands in the one sheet, under
+   Travel — so this is its own small flow (own amount, own date, own currency)
+   that converts to AED and then calls the same send() the main flow uses,
+   rather than routing through doSave() and its category/segment steps. */
+const FX = { USD: 3.6725, EUR: 4.12 };  // USD is the real, fixed UAE peg — this
+                                          // one never needs updating. EUR floats;
+                                          // edit this if the rate drifts before a trip.
+const VAC_DESTS = ["Lebanon Travel", "Vacation Travel"];
+let vacAmount="", vacCurrency="USD", vacSpentOn=null, vacSaving=false, vacLastKey=null;
+const money2cur = (n,cur) => `${cur} ${(Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
 /* Which day the money was actually spent. Defaults to today, because that is the
    answer nine times in ten — but a purchase logged the next morning belongs to the
    day it happened, and at a month boundary that is the difference between the
@@ -571,11 +622,104 @@ function key(k){
     amount=(amount==="0"?"":amount)+k; }
   paintAmount();
 }
-function paintWho(){
-  const w=$("#whoPick"); w.innerHTML="";
+function vacKey(k){
+  if(k==="del") vacAmount=vacAmount.slice(0,-1);
+  else if(k==="."){ if(!vacAmount.includes(".")) vacAmount=(vacAmount||"0")+"."; }
+  else { const [,dec]=vacAmount.split(".");
+    if(dec!==undefined && dec.length>=2) return;
+    if(vacAmount.replace(".","").length>=9) return;
+    vacAmount=(vacAmount==="0"?"":vacAmount)+k; }
+  paintVacAmount();
+}
+function paintVacAmount(){
+  const v=$("#vacAmountView");
+  v.innerHTML = `<small>${vacCurrency}</small>${vacAmount||"0"}`;
+  v.classList.toggle("zero", !vacAmount);
+  const amt = parseFloat(vacAmount);
+  $("#vacRateHint").textContent = amt>0
+    ? `≈ ${money2(Math.round(amt*FX[vacCurrency]*100)/100)} · 1 ${vacCurrency} = ${FX[vacCurrency]} AED` : "";
+}
+function paintVacWhen(){
+  const today = isoDay(new Date());
+  $("#vacDatePick").max = today;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yest = isoDay(y);
+  const sel = vacSpentOn ?? today;
+  document.querySelectorAll("#vacWhenPick button").forEach(b=>{
+    const on = (b.dataset.d==="0" && sel===today) ||
+               (b.dataset.d==="1" && sel===yest) ||
+               (b.dataset.d==="pick" && sel!==today && sel!==yest);
+    b.classList.toggle("on", on);
+    if(b.dataset.d==="pick") b.textContent = on ? dayLabel(sel) : "Another day";
+  });
+}
+/* The two destination buttons double as a mini category/segment picker — same
+   "N of budget" status the main Category/Segment steps show, scoped to
+   Travel's two trip segments, always against the real current month (not
+   whatever month Budget happens to be browsing). */
+function paintVacDest(){
+  const travel = DATA.categories.find(c=>c.name==="Travel");
+  const spent = spentBy(), g=$("#vacDestGrid"); g.innerHTML="";
+  VAC_DESTS.forEach(name=>{
+    const i = travel ? travel.segments.indexOf(name) : -1;
+    const bud = (travel && i>=0) ? travel.budgets[i]||0 : 0;
+    const sp = spent[`Travel|${name}`]||0;
+    const st = statusOf(sp,bud);
+    const b=el("button", st.k==="over"?"over":st.k==="close"?"close":null);
+    b.append(el("span",null,name),
+             el("i",null, bud ? `${Math.round(sp)} of ${Math.round(bud)}` : "no budget"));
+    b.onclick=()=>vacSave(name);
+    g.appendChild(b);
+  });
+}
+async function vacSave(dest){
+  if(vacSaving) return; vacSaving=true;
+  try{
+    const amt=parseFloat(vacAmount);
+    if(!(amt>0)) return;
+    const travel = DATA.categories.find(c=>c.name==="Travel");
+    const segOk = travel && travel.segments.includes(dest);
+    if(!segOk){
+      $("#vacError").textContent = `Couldn't find "${dest}" under Travel in your sheet.`;
+      return;
+    }
+    $("#vacError").textContent = "";
+    const rate = FX[vacCurrency];
+    const aed = Math.round(amt*rate*100)/100;
+    const note = `${vacCurrency} ${amt.toFixed(2)} × ${rate} = ${money2(aed)}`;
+    const at = vacSpentOn ? `${vacSpentOn}T12:00:00+04:00` : null;
+
+    $("#vacSavedAmt").textContent = `${money2cur(amt,vacCurrency)} → ${money2(aed)}`;
+    $("#vacSavedCat").textContent = `Travel › ${dest} · ${who}`
+      + (vacSpentOn ? ` · ${dayLabel(vacSpentOn)}` : "");
+    $("#vacStepEntry").classList.add("hide");
+    $("#vacStepSaved").classList.remove("hide");
+
+    const res = await send({ amount:aed, who, category:"Travel", segment:dest, note, ...(at?{at}:{}) });
+    vacLastKey = res.ok ? res.row.key : (res.transport ? res.localKey : null);
+    $("#vacUndoLast").classList.toggle("hide", !vacLastKey);
+    if(res.ok){
+      DATA.rows.unshift({ ...res.row });
+      try{ localStorage.setItem("bud.cache", JSON.stringify(DATA)); }catch{}
+    } else if(res.transport){
+      paintOutbox();
+    } else {
+      // the sheet actively refused it — say so plainly, same reasoning as the
+      // main flow: retrying the identical payload would just fail again
+      $("#vacSavedCat").textContent += ` — refused: ${res.error}`;
+    }
+    vacAmount=""; vacSpentOn=null;
+    paintVacAmount(); paintVacWhen();
+  } finally { vacSaving=false; }
+}
+/* "who" is one app-wide notion of who's spending — the Add tab and the
+   Vacation tab each show their own picker, but both read and write the same
+   state, so picking Jamela in one keeps her picked in the other. */
+function paintWho(id){
+  const w=$("#"+id); if(!w) return; w.innerHTML="";
   DATA.people.forEach(p=>{
     const b=el("button",p===who?"on":null,p);
-    b.onclick=()=>{ who=p; cfg={...cfg,who}; store.set(cfg); paintWho(); };
+    b.onclick=()=>{ who=p; cfg={...cfg,who}; store.set(cfg); paintWho("whoPick"); paintWho("vacWhoPick"); };
     w.appendChild(b);
   });
 }
@@ -845,7 +989,7 @@ function paintTrack(){
    were actually on survives a reload the same way the sheet URL does. */
 function lastTab(){
   const t = (()=>{ try{ return localStorage.getItem("bud.tab"); }catch{ return null; } })();
-  return t==="track" ? "track" : "add";
+  return (t==="track"||t==="vacation") ? t : "add";
 }
 function showTab(n){
   try{ localStorage.setItem("bud.tab", n); }catch{}
@@ -858,11 +1002,15 @@ function showTab(n){
   if(n==="track"){ amount=""; catIdx=null; segIdx=null; spentOn=null; splitMonths=1; }
   /* A month you jumped to from a backdated entry is a one-trip thing — the
      next time you open Budget on its own, it should be this month again. */
-  if(n==="add"){ viewedMonth=null; }
-  ["add","track"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
+  if(n==="add"||n==="vacation"){ viewedMonth=null; }
+  ["add","track","vacation"].forEach(t=>$("#"+t).classList.toggle("hide", t!==n));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===n));
   if(n==="track"){ paintTrack(); refreshIfStale(); }
-  if(n==="add"){ showStep("stepAmount"); paintWho(); paintWhen(); paintMonths(); paintAmount(); }
+  if(n==="add"){ showStep("stepAmount"); paintWho("whoPick"); paintWhen(); paintMonths(); paintAmount(); }
+  if(n==="vacation"){
+    $("#vacStepSaved").classList.add("hide"); $("#vacStepEntry").classList.remove("hide");
+    paintWho("vacWhoPick"); paintVacWhen(); paintVacAmount(); paintVacDest();
+  }
   $(".wrap").scrollTop=0;
 }
 function shiftMonth(delta){
@@ -874,7 +1022,7 @@ function shiftMonth(delta){
 $("#prevMonth").onclick   = ()=> shiftMonth(-1);
 $("#nextMonth").onclick   = ()=> shiftMonth(1);
 $("#backToToday").onclick = ev => { ev.preventDefault(); viewedMonth=null; paintTrack(); };
-document.querySelectorAll(".pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
+document.querySelectorAll("#stepAmount .pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
 document.querySelectorAll("#whenPick button").forEach(b=>b.onclick=()=>{
   if(b.dataset.d==="pick"){
     const inp=$("#datePick");
@@ -890,6 +1038,47 @@ document.querySelectorAll("#monthsPick button").forEach(b=>b.onclick=()=>{
   splitMonths = Number(b.dataset.n);
   paintMonths(); paintAmount();
 });
+document.querySelectorAll("#vacStepEntry .pad button").forEach(b=>b.onclick=()=>vacKey(b.dataset.k));
+document.querySelectorAll("#vacCurrencyPick button").forEach(b=>b.onclick=()=>{
+  vacCurrency = b.dataset.c;
+  document.querySelectorAll("#vacCurrencyPick button").forEach(x=>x.classList.toggle("on", x===b));
+  paintVacAmount();
+});
+document.querySelectorAll("#vacWhenPick button").forEach(b=>b.onclick=()=>{
+  if(b.dataset.d==="pick"){
+    const inp=$("#vacDatePick");
+    inp.value = vacSpentOn ?? isoDay(new Date());
+    inp.hidden = false; inp.showPicker ? inp.showPicker() : inp.click();
+    return;
+  }
+  const d=new Date(); d.setDate(d.getDate()-Number(b.dataset.d));
+  vacSpentOn = Number(b.dataset.d)===0 ? null : isoDay(d);
+  paintVacWhen();
+});
+$("#vacDatePick").onchange = e => {
+  const v=e.target.value; e.target.hidden=true;
+  if(!v) return;
+  vacSpentOn = (v === isoDay(new Date())) ? null : v;
+  paintVacWhen();
+};
+$("#vacAddAnother").onclick = ()=>{
+  paintWho("vacWhoPick"); paintVacDest();
+  $("#vacStepSaved").classList.add("hide"); $("#vacStepEntry").classList.remove("hide");
+};
+$("#vacUndoLast").onclick = async ()=>{
+  const b=$("#vacUndoLast");
+  b.textContent="Removing…"; b.disabled=true;
+  const res = await removeEntry(vacLastKey);
+  if(res.ok){
+    vacLastKey=null;
+    $("#vacSavedAmt").textContent="Removed";
+    $("#vacSavedCat").textContent="That entry is gone from the sheet.";
+    b.classList.add("hide");
+  } else {
+    $("#vacSavedCat").textContent = res.error;
+  }
+  b.textContent="Undo — remove that entry"; b.disabled=false;
+};
 $("#datePick").onchange = e => {
   const v=e.target.value; e.target.hidden=true;
   if(!v) return;
@@ -899,7 +1088,7 @@ $("#datePick").onchange = e => {
 $("#toCat").onclick      = ()=>{ paintCats(); showStep("stepCat"); };
 $("#backAmount").onclick = ()=> showStep("stepAmount");
 $("#backCat").onclick    = ()=>{ paintCats(); showStep("stepCat"); };
-$("#addAnother").onclick = ()=>{ paintWho(); showStep("stepAmount"); };
+$("#addAnother").onclick = ()=>{ paintWho("whoPick"); showStep("stepAmount"); };
 $("#seeTrack").onclick   = ()=> showTab("track");
 /* A split save can leave several rows behind at once (one per month), so Undo
    removes every key from that save, not just one — a half-undone split would
@@ -997,6 +1186,7 @@ async function refreshIfStale(force) {
     if (!$("#track").classList.contains("hide")) paintTrack();
     if (!$("#stepCat").classList.contains("hide")) paintCats();
     if (!$("#stepSeg").classList.contains("hide") && catIdx !== null) paintSegs();
+    if (!$("#vacation").classList.contains("hide")) paintVacDest();
   } catch { /* offline or asleep — the cached view stays up, nothing breaks */ }
   finally { inFlight = false; }
 }

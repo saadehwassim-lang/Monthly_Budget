@@ -70,9 +70,9 @@ h2{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:v
 .monthLink:active{opacity:.7}
 
 /* entry */
-#add{display:flex;flex-direction:column}
-#add > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
-#stepAmount,#stepCat,#stepSeg{flex:1}
+#add,#vacation{display:flex;flex-direction:column}
+#add > .card,#vacation > .card{display:flex;flex-direction:column;padding-top:10px;padding-bottom:10px}
+#stepAmount,#stepCat,#stepSeg,#vacStepEntry{flex:1}
 .who{display:flex;gap:6px;background:var(--sunk);border-radius:12px;padding:3px;margin-bottom:7px}
 .who button{flex:1;border:0;background:none;padding:6px 4px;border-radius:9px;color:var(--ink2);
   font:600 13px/1 inherit;cursor:pointer}
@@ -262,6 +262,44 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
     </div>
   </section>
 
+  <section id="vacation" class="hide">
+    <div class="card" id="vacStepEntry">
+      <div class="who" id="vacWhoPick"></div>
+      <div class="when" id="vacWhenPick">
+        <button data-d="0" class="on">Today</button>
+        <button data-d="1">Yesterday</button>
+        <button data-d="pick">Another day</button>
+        <input type="date" id="vacDatePick" hidden>
+      </div>
+      <div class="months" id="vacCurrencyPick">
+        <span class="lbl">Currency</span>
+        <button data-c="USD" class="on">USD</button>
+        <button data-c="EUR">EUR</button>
+      </div>
+      <div class="amount zero" id="vacAmountView"><small>USD</small>0</div>
+      <div class="step" id="vacRateHint"></div>
+      <div class="pad">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button>
+      </div>
+      <h2 style="margin:14px 0 0">Goes to</h2>
+      <div class="grid" id="vacDestGrid"></div>
+      <p class="hint" id="vacError" style="color:var(--over);margin:10px 0 0"></p>
+    </div>
+
+    <div class="card hide" id="vacStepSaved">
+      <div class="saved">
+        <div class="tick"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>
+        <div class="big" id="vacSavedAmt"></div>
+        <div class="muted" id="vacSavedCat"></div>
+      </div>
+      <button class="go" id="vacAddAnother">Add another</button>
+      <button class="back hide" id="vacUndoLast">Undo — remove that entry</button>
+    </div>
+  </section>
+
   <section id="track" class="hide">
     <div class="card">
       <div class="row">
@@ -292,6 +330,7 @@ input[type=text]{width:100%;padding:13px;border:1px solid var(--edge);border-rad
 
 <nav class="hide" id="tabs">
   <button data-tab="add" class="on"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+  <button data-tab="vacation"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></svg>Vacation</button>
   <button data-tab="track"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Budget</button>
 </nav>
 <script src="app.js"></script>
